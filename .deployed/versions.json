@@ -1,0 +1,55 @@
+[
+  {
+    "apihost": "https://faas-nyc1-2ef2e6cc.doserverless.co",
+    "namespace": "fn-abdb044a-388f-4e27-89e8-849a449d10f6",
+    "packageVersions": {
+      "wtc": {
+        "version": "0.0.95",
+        "digest": "ac49a0ad03237c219e211ef67f454430e686947cab21d746bf391309f1eef71e"
+      }
+    },
+    "actionVersions": {
+      "wtc/cancel": {
+        "version": "0.0.10",
+        "digest": "cfaaa5855df663bbd51f25177464eb945a744f1bd458afaed569e1bcca5e8c3a"
+      },
+      "wtc/dates": {
+        "version": "0.0.16",
+        "digest": "38d43c574900c7ff60d727a81c6272d43dc2891a6de2d717ef0440fef48831c7"
+      },
+      "wtc/delete_holds": {
+        "version": "0.0.11",
+        "digest": "4467eddb4e37b567399882db88427fe58bc415ba494d84beec1fd12875db9379"
+      },
+      "wtc/hold": {
+        "version": "0.0.15",
+        "digest": "69ac42068fe0ff350dcd691bb8c002a1a2a24a1d8f5b8571d4477be6038333b4"
+      },
+      "wtc/reserve": {
+        "version": "0.0.14",
+        "digest": "0c8b4a2f3639a719a086f63fbc11244c3f543b67a44e8128f6e93a557ae18582"
+      },
+      "wtc/sendgrid": {
+        "version": "0.0.2",
+        "digest": "d9795f939227034bf670e34c1cfbbee2b3fabd7d5bfe197523cca0a3bda2944d"
+      },
+      "wtc/sms": {
+        "version": "0.0.16",
+        "digest": "0236bd72e27b30786fe297ec2e3f02b67322e50e30e811d5b098fb29ca04d95d"
+      },
+      "wtc/status": {
+        "version": "0.0.7",
+        "digest": "a84bc94df6f38c981f86ead82e4a9dbd4be07b51f17bd38ec8f1de9ba98bdf5a"
+      },
+      "wtc/times": {
+        "version": "0.0.15",
+        "digest": "3844761433e8095aa98bf3212cf4be4895e63ef19a7ca677e38914b96e79ddb6"
+      },
+      "wtc/waitlist": {
+        "version": "0.0.8",
+        "digest": "087f8a477267a131a2e5859a5a3e391241ab990cd86a8ee690013bb6082d1b5a"
+      }
+    },
+    "webHashes": {}
+  }
+]

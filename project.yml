@@ -1,0 +1,43 @@
+environment:
+  {
+    DB_HOST: "${DB_HOST}",
+    DB_USER: "${DB_USER}",
+    DB_PASS: "${DB_PASS}",
+    DB_PORT: "${DB_PORT}",
+    TWILIO_ACCOUNT_SID: "${TWILIO_ACCOUNT_SID}",
+    TWILIO_AUTH_TOKEN: "${TWILIO_AUTH_TOKEN}",
+    SENDGRID_API_KEY: "${SENDGRID_API_KEY}",
+  }
+packages:
+  - name: wtc
+    functions:
+      - name: dates
+        main: "run"
+        runtime: "nodejs:default"
+      - name: times
+        main: "run"
+        runtime: "nodejs:default"
+      - name: hold
+        main: "run"
+        runtime: "nodejs:default"
+      - name: reserve
+        main: "run"
+        runtime: "nodejs:default"
+      - name: delete_holds
+        main: "run"
+        runtime: "nodejs:default"
+      - name: cancel
+        main: "run"
+        runtime: "nodejs:default"
+      - name: waitlist
+        main: "run"
+        runtime: "nodejs:default"
+      - name: status
+        main: "run"
+        runtime: "nodejs:default"
+      - name: sms
+        main: "run"
+        runtime: "nodejs:default"
+      - name: sendgrid
+        main: "run"
+        runtime: "nodejs:default"

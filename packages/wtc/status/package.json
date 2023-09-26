@@ -1,0 +1,17 @@
+{
+  "name": "available-dates",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run.js",
+  "dependencies": {
+    "date-fns": "^2.29.3",
+    "dotenv": "^16.0.3",
+    "mysql2": "^2.3.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

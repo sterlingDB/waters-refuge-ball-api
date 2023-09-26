@@ -1,0 +1,19 @@
+{
+  "name": "available-spots",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run.js",
+  "dependencies": {
+    "axios": "^1.1.3",
+    "date-fns": "^2.29.3",
+    "dotenv": "^16.0.3",
+    "mysql2": "^2.3.3",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
