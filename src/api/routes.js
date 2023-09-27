@@ -122,23 +122,18 @@ router.get('/status', async (req, res) => {
     const [[results]] = await conn.query(sql);
     conn.end();
 
-    const openDateTime = new Date(results.openDateTime);
-    const closeDateTime = new Date(results.closeDateTime);
-    const castOpenDateTime = new Date(results.castOpenDateTime);
-    const castCloseDateTime = new Date(results.castCloseDateTime);
+    const hostessOpenDateTime = new Date(results.hostessOpenDateTime);
+    const hostessCloseDateTime = new Date(results.hostessCloseDateTime);
+    const generalOpenDateTime = new Date(results.generalOpenDateTime);
+    const generalCloseDateTime = new Date(results.generalCloseDateTime);
 
-    if (results.cast && now >= castOpenDateTime && now <= castCloseDateTime) {
-      status = 'castCrew';
+    if (results.cast && now >= generalOpenDateTime && now <= generalCloseDateTime) {
+      status = 'general';
     }
-    if (results.reg || (now >= openDateTime && now <= closeDateTime)) {
-      status = 'registration';
+    if ((now >= hostessOpenDateTime && now <= hostessCloseDateTime)) {
+      status = 'hostess';
     }
-    if (results.waitlist) {
-      status = 'waitlist';
-    }
-    if (results.full) {
-      status = 'full';
-    }
+
     return res.status(200).json({ status });
   } catch (err) {
     console.error(err);
@@ -151,15 +146,13 @@ router.get('/dates', async (req, res) => {
     //       WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR)
 
     const conn = await mysql.createConnection(mysqlServer);
-    const sql = `SELECT DISTINCT (date_slot) 
-      FROM timeslots 
-      WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR) 
-      AND date_slot > NOW() 
-      ORDER BY date_slot asc;`;
+    const sql = `SELECT DISTINCT (eventDate) 
+      FROM eventDates 
+      ORDER BY eventDate asc;`;
     const [results] = await conn.query(sql);
     conn.end();
 
-    const returnData = results.map((x) => format(x.date_slot, 'yyyy-MM-dd'));
+    const returnData = results.map((x) => format(x.eventDate, 'yyyy-MM-dd'));
 
     return res.status(200).json(returnData);
   } catch (err) {
@@ -167,6 +160,69 @@ router.get('/dates', async (req, res) => {
     return res.status(400).json(err);
   }
 });
+
+router.post('/hostessReserve', async (req, res) => {
+  try {
+    const args = req.body;
+
+    // if (!args.uuid) {
+    //   return res.status(400).json({ error: 'reservation not found' });
+    // }
+
+    const conn = await mysql.createConnection(mysqlServer);
+
+    // const sqlResValid = `SELECT * FROM reservations WHERE uuid=?;`;
+    // const resultsResValid = await conn.query(sqlResValid, [args.uuid]);
+    // if (resultsResValid[0].length === 0) {
+    //   conn.end();
+    //   return res.status(400).json({ error: 'reservation not found' });
+    // }
+
+    // if (resultsResValid[0][0].is_deleted === 1) {
+    //   conn.end();
+    //   return res.status(400).json({ error: 'hold time has expired' });
+    // }
+    // if (resultsResValid[0][0].reservation_complete === 1) {
+    //   conn.end();
+    //   return res
+    //     .status(400)
+    //     .json({ success: 'reservation already completed, no more changes' });
+    // }
+    const updateArgs = [
+      args.name,
+      args.phone,
+      args.email,
+      args.eventDate,
+    ];
+
+    const sql = `INSERT INTO hostess 
+      SET name=?, phone=?, email=?, eventDate=?;`;
+    const results = await conn.query(sql, updateArgs);
+    conn.end();
+
+    let returnData;
+    let emailResults;
+    let smsResults;
+
+    if (results[0].affectedRows > 0) {
+      sms({ uuid: args.uuid });
+      email({ uuid: args.uuid });
+
+      return res.status(200).json({ success: 'good to go' });
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+
+
+
+
 
 router.post('/times', async (req, res) => {
   try {

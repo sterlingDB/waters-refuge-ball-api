@@ -13,28 +13,28 @@ const { ExtractJwt, Strategy } = require('passport-jwt');
 const mysql = require('mysql2/promise');
 const { mysqlServer } = require('./connection');
 
-passport.use(
-  new Strategy(
-    {
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.HMAC_JWT,
-    },
-    async (payload, done) => {
-      if (payload.id) {
-        const sql = `SELECT * 
-        FROM users 
-        WHERE id=?;`;
-        const conn = await mysql.createConnection(mysqlServer);
-        const results = await conn.query(sql, [payload.id]);
-        conn.end();
+// passport.use(
+//   new Strategy(
+//     {
+//       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+//       secretOrKey: process.env.HMAC_JWT,
+//     },
+//     async (payload, done) => {
+//       if (payload.id) {
+//         const sql = `SELECT * 
+//         FROM users 
+//         WHERE id=?;`;
+//         const conn = await mysql.createConnection(mysqlServer);
+//         const results = await conn.query(sql, [payload.id]);
+//         conn.end();
 
-        return done(null, results[0]);
-      }
+//         return done(null, results[0]);
+//       }
 
-      return done(false);
-    }
-  )
-);
+//       return done(false);
+//     }
+//   )
+// );
 
 // redirect http->https
 const redirectController = (req, res, next) => {
