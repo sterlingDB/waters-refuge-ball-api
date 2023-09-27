@@ -141,18 +141,21 @@ router.get('/status', async (req, res) => {
   }
 });
 
-router.get('/dates', async (req, res) => {
+router.get('/availableForHosting', async (req, res) => {
   try {
-    //       WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR)
 
     const conn = await mysql.createConnection(mysqlServer);
-    const sql = `SELECT DISTINCT (eventDate) 
-      FROM eventDates 
-      ORDER BY eventDate asc;`;
+    const sql = `SELECT tableData.eventDate, COUNT(*) AS tablesAvailable
+    FROM (SELECT eventTables.eventDate, if(attendees.isHostess, 1, 0) AS hasHostess
+    FROM eventTables
+    LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
+    GROUP BY eventTables.id) AS tableData
+    WHERE tableData.hasHostess = 0
+    GROUP BY tableData.eventDate`;
     const [results] = await conn.query(sql);
     conn.end();
 
-    const returnData = results.map((x) => format(x.eventDate, 'yyyy-MM-dd'));
+    const returnData = results.map((x) => {return {eventDate: format(x.eventDate, 'yyyy-MM-dd'), tableAvailable: x.tablesAvailable}});
 
     return res.status(200).json(returnData);
   } catch (err) {
@@ -161,7 +164,29 @@ router.get('/dates', async (req, res) => {
   }
 });
 
-router.post('/hostessReserve', async (req, res) => {
+
+router.get('/dates', async (req, res) => {
+  try {
+    //       WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR)
+
+    const conn = await mysql.createConnection(mysqlServer);
+    const sql = `SELECT eventTables.*, COUNT(attendees.id) AS seatsFilled, (eventTables.seats - COUNT(attendees.id)) AS openSeats, if(attendees.isHostess, 1, 0) AS hasHostess, if(attendees.isHostess, attendees.name, '') AS hostessName
+    FROM eventTables
+    LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
+    GROUP BY eventTables.id;`;
+    const [results] = await conn.query(sql);
+    conn.end();
+
+    const returnData = results.map((x) => {return {eventDate: format(x.eventDate, 'yyyy-MM-dd'), tableNumber: x.tableNumber, openSeats: x.openSeats, hasHostess: x.hasHostess, hostessName: x.hostessName}});
+
+    return res.status(200).json(returnData);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/reserveHostess', async (req, res) => {
   try {
     const args = req.body;
 
@@ -188,16 +213,34 @@ router.post('/hostessReserve', async (req, res) => {
     //     .status(400)
     //     .json({ success: 'reservation already completed, no more changes' });
     // }
+
+
+    const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
+    FROM eventTables
+    WHERE eventTables.eventDate=?
+    AND eventTables.hostessId IS NULL
+    ORDER BY RAND()
+    LIMIT 0,1;`;
+
+    const tableResults = await conn.query(sqlTableNumber, [args.eventDate]);
     const updateArgs = [
       args.name,
       args.phone,
       args.email,
       args.eventDate,
+      tableResults[0][0].tableNumber
     ];
-
-    const sql = `INSERT INTO hostess 
-      SET name=?, phone=?, email=?, eventDate=?;`;
+    const sql = `INSERT INTO eventAttendees 
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?,isHostess=1;`;
     const results = await conn.query(sql, updateArgs);
+
+    const hostessId = results[0].insertId;
+
+    const sqlTableNumberUpdate = `UPDATE eventTables
+    SET eventTables.hostessId=${hostessId}
+    WHERE eventTables.id=${tableResults[0][0].id};`;
+    const resultsUpdate = await conn.query(sqlTableNumberUpdate);
+
     conn.end();
 
     let returnData;
