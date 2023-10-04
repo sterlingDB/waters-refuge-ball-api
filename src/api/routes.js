@@ -6,7 +6,25 @@ const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const sgMail = require('@sendgrid/mail');
+const isProduction = process.env.NODE_ENV === 'production';
 
+const { ApiError, Client, Environment } = require('square');
+//import { Client } from 'square';
+
+const { randomUUID } = require('crypto');
+// const { paymentsApi } = new Client({
+//   accessToken: process.env.SQUARE_ACCESS_TOKEN,
+//   environment: 'sandbox',
+// });
+
+const client = new Client({
+  environment: isProduction ? Environment.Production : Environment.Sandbox,
+  accessToken: process.env.SQUARE_ACCESS_TOKEN,
+});
+
+BigInt.prototype.toJSON = function() {
+  return this.toString();
+};
 async function sms(args) {
   if (!args.uuid) {
     return { error: 'uuid is required' };
@@ -267,6 +285,53 @@ router.post('/reserveHostess', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/payment', async (req, res) => {
+  try {
+    const args = req.body;
+
+    const conn = await mysql.createConnection(mysqlServer);
+    const sql = `SELECT * FROM eventAttendees 
+    WHERE uuid=?;`;
+    const results = await conn.query(sql, [args.uuid]);
+
+    const { result } = await client.paymentsApi.createPayment({
+      locationId: process.env.SQUARE_LOCATION_ID,
+      sourceId: args.sourceId,
+      idempotencyKey: randomUUID(),
+      amountMoney: {
+        amount: 2500,
+        currency: 'USD',
+      },
+      reference_id: args.uuid,
+      buyer_email_address: results[0][0].email,
+      note: `Refuge Ball 2024: Hostess: ${results[0][0].name}: ${results[0][0].phone}`,
+    });
+
+    const paidSQL = `INSERT INTO eventPayments 
+    SET uuid=?, payment=?, amountMoney=?, applicationDetails=?, approvedMoney=?, cardDetails=?, totalMoney=?;`;
+    const paidResults = await conn.query(paidSQL, [
+      args.uuid,
+      JSON.stringify(result.payment),
+      JSON.stringify(result.payment.amountMoney),
+      JSON.stringify(result.payment.applicationDetails),
+      JSON.stringify(result.payment.approvedMoney),
+      JSON.stringify(result.payment.cardDetails),
+      JSON.stringify(result.payment.totalMoney),
+    ]);
+
+    const paidSQLUpdate = `UPDATE eventAttendees 
+    SET hasPaid=1
+    WHERE uuid=?;`;
+    const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid]);
+
+    conn.end();
+    return res.status(200).json({ success: 'good to go', result });
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);

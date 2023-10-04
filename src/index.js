@@ -21,8 +21,8 @@ const { mysqlServer } = require('./connection');
 //     },
 //     async (payload, done) => {
 //       if (payload.id) {
-//         const sql = `SELECT * 
-//         FROM users 
+//         const sql = `SELECT *
+//         FROM users
 //         WHERE id=?;`;
 //         const conn = await mysql.createConnection(mysqlServer);
 //         const results = await conn.query(sql, [payload.id]);

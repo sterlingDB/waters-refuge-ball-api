@@ -1,7 +1,7 @@
 {
-  "name": "wtc_api",
+  "name": "refuge-ball-api",
   "version": "1.0.0",
-  "description": "WTC API",
+  "description": "Refuge Ball API",
   "main": "index.js",
   "scripts": {
     "server:start": "node src/index.js",
@@ -21,6 +21,8 @@
     "mysql2": "^2.3.3",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.0",
+    "square": "^31.0.0",
+    "tslib": "^2.6.2",
     "twilio": "^3.82.2",
     "uuid": "^9.0.0",
     "vhost": "^3.0.2"
