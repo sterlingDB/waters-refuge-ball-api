@@ -127,10 +127,10 @@ router.get('/status', async (req, res) => {
     const generalOpenDateTime = new Date(results.generalOpenDateTime);
     const generalCloseDateTime = new Date(results.generalCloseDateTime);
 
-    if (results.cast && now >= generalOpenDateTime && now <= generalCloseDateTime) {
+    if (now >= generalOpenDateTime && now <= generalCloseDateTime) {
       status = 'general';
     }
-    if ((now >= hostessOpenDateTime && now <= hostessCloseDateTime)) {
+    if (now >= hostessOpenDateTime && now <= hostessCloseDateTime) {
       status = 'hostess';
     }
 
@@ -143,7 +143,6 @@ router.get('/status', async (req, res) => {
 
 router.get('/availableForHosting', async (req, res) => {
   try {
-
     const conn = await mysql.createConnection(mysqlServer);
     const sql = `SELECT tableData.eventDate, COUNT(*) AS tablesAvailable
     FROM (SELECT eventTables.eventDate, if(attendees.isHostess, 1, 0) AS hasHostess
@@ -155,7 +154,12 @@ router.get('/availableForHosting', async (req, res) => {
     const [results] = await conn.query(sql);
     conn.end();
 
-    const returnData = results.map((x) => {return {eventDate: format(x.eventDate, 'yyyy-MM-dd'), tableAvailable: x.tablesAvailable}});
+    const returnData = results.map((x) => {
+      return {
+        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
+        tableAvailable: x.tablesAvailable,
+      };
+    });
 
     return res.status(200).json(returnData);
   } catch (err) {
@@ -163,7 +167,6 @@ router.get('/availableForHosting', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
 
 router.get('/dates', async (req, res) => {
   try {
@@ -177,7 +180,15 @@ router.get('/dates', async (req, res) => {
     const [results] = await conn.query(sql);
     conn.end();
 
-    const returnData = results.map((x) => {return {eventDate: format(x.eventDate, 'yyyy-MM-dd'), tableNumber: x.tableNumber, openSeats: x.openSeats, hasHostess: x.hasHostess, hostessName: x.hostessName}});
+    const returnData = results.map((x) => {
+      return {
+        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
+        tableNumber: x.tableNumber,
+        openSeats: x.openSeats,
+        hasHostess: x.hasHostess,
+        hostessName: x.hostessName,
+      };
+    });
 
     return res.status(200).json(returnData);
   } catch (err) {
@@ -215,7 +226,6 @@ router.post('/reserveHostess', async (req, res) => {
     //     .json({ success: 'reservation already completed, no more changes' });
     // }
 
-
     const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
     FROM eventTables
     WHERE eventTables.eventDate=?
@@ -230,7 +240,7 @@ router.post('/reserveHostess', async (req, res) => {
       args.email,
       args.eventDate,
       tableResults[0][0].tableNumber,
-      uuid
+      uuid,
     ];
     const sql = `INSERT INTO eventAttendees 
       SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=1;`;
@@ -262,12 +272,6 @@ router.post('/reserveHostess', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
-
-
-
-
-
 
 router.post('/times', async (req, res) => {
   try {
