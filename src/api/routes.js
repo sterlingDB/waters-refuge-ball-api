@@ -189,6 +189,7 @@ router.get('/dates', async (req, res) => {
 router.post('/reserveHostess', async (req, res) => {
   try {
     const args = req.body;
+    const uuid = uuidv4();
 
     // if (!args.uuid) {
     //   return res.status(400).json({ error: 'reservation not found' });
@@ -228,10 +229,11 @@ router.post('/reserveHostess', async (req, res) => {
       args.phone,
       args.email,
       args.eventDate,
-      tableResults[0][0].tableNumber
+      tableResults[0][0].tableNumber,
+      uuid
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?,isHostess=1;`;
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=1;`;
     const results = await conn.query(sql, updateArgs);
 
     const hostessId = results[0].insertId;
@@ -251,7 +253,7 @@ router.post('/reserveHostess', async (req, res) => {
       sms({ uuid: args.uuid });
       email({ uuid: args.uuid });
 
-      return res.status(200).json({ success: 'good to go' });
+      return res.status(200).json({ success: 'good to go', uuid });
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
