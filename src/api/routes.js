@@ -25,6 +25,7 @@ const client = new Client({
 BigInt.prototype.toJSON = function() {
   return this.toString();
 };
+
 async function sms(args) {
   if (!args.uuid) {
     return { error: 'uuid is required' };
@@ -129,6 +130,42 @@ async function email(args) {
   }
 }
 
+async function getCosts(dbConn){
+
+  const sql = `SELECT * FROM eventCosts WHERE id=1;`;
+  const results = await dbConn.query(sql);
+
+  const costs = results[0][0];
+  return costs
+
+}
+
+async function getAttendee(dbConn, uuid){
+
+  const sql = `SELECT * FROM eventAttendees WHERE uuid=?;`;
+  const results = await dbConn.query(sql, [uuid]);
+
+  const data = results[0][0];
+  return data
+
+}
+
+async function calculateTotalPrice(dbConn, uuid){
+    const costs = await getCosts(dbConn);
+    const attendee = await getAttendee(dbConn, uuid);
+   
+    let chargeAmount = costs.general;
+    if(attendee.isHostess){
+      chargeAmount = costs.hostess
+    }
+    if(attendee.specialDinner){
+      chargeAmount += costs.specialDinner
+    }
+    
+    return {charge:chargeAmount*100, display:chargeAmount};
+
+}
+
 router.get('/status', async (req, res) => {
   try {
     const conn = await mysql.createConnection(mysqlServer);
@@ -179,6 +216,7 @@ router.get('/availableForHosting', async (req, res) => {
       };
     });
 
+
     return res.status(200).json(returnData);
   } catch (err) {
     console.error(err);
@@ -220,29 +258,7 @@ router.post('/reserveHostess', async (req, res) => {
     const args = req.body;
     const uuid = uuidv4();
 
-    // if (!args.uuid) {
-    //   return res.status(400).json({ error: 'reservation not found' });
-    // }
-
     const conn = await mysql.createConnection(mysqlServer);
-
-    // const sqlResValid = `SELECT * FROM reservations WHERE uuid=?;`;
-    // const resultsResValid = await conn.query(sqlResValid, [args.uuid]);
-    // if (resultsResValid[0].length === 0) {
-    //   conn.end();
-    //   return res.status(400).json({ error: 'reservation not found' });
-    // }
-
-    // if (resultsResValid[0][0].is_deleted === 1) {
-    //   conn.end();
-    //   return res.status(400).json({ error: 'hold time has expired' });
-    // }
-    // if (resultsResValid[0][0].reservation_complete === 1) {
-    //   conn.end();
-    //   return res
-    //     .status(400)
-    //     .json({ success: 'reservation already completed, no more changes' });
-    // }
 
     const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
     FROM eventTables
@@ -291,26 +307,50 @@ router.post('/reserveHostess', async (req, res) => {
   }
 });
 
-router.post('/payment', async (req, res) => {
+router.post('/calculateTotalPrice', async (req, res) => {
   try {
     const args = req.body;
-
     const conn = await mysql.createConnection(mysqlServer);
-    const sql = `SELECT * FROM eventAttendees 
-    WHERE uuid=?;`;
-    const results = await conn.query(sql, [args.uuid]);
+
+    const chargeAmount = await calculateTotalPrice(conn, args.uuid);
+    conn.end();
+
+    return res.status(200).json(chargeAmount);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+
+
+
+router.post('/payment', async (req, res) => {
+  try {
+    const args = req.body;    
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const chargeAmount = await calculateTotalPrice(conn, args.uuid);
+
+    // const sql = `SELECT * FROM eventAttendees 
+    // WHERE uuid=?;`;
+    // const results = await conn.query(sql, [args.uuid]);
+
+    const attendee = await getAttendee(conn, args.uuid);
 
     const { result } = await client.paymentsApi.createPayment({
       locationId: process.env.SQUARE_LOCATION_ID,
       sourceId: args.sourceId,
       idempotencyKey: randomUUID(),
       amountMoney: {
-        amount: 2500,
+        amount: chargeAmount.charge,
         currency: 'USD',
       },
       reference_id: args.uuid,
-      buyer_email_address: results[0][0].email,
-      note: `Refuge Ball 2024: Hostess: ${results[0][0].name}: ${results[0][0].phone}`,
+      buyer_email_address: attendee.email,
+      note: `Refuge Ball ${process.env.REFUGE_BALL_YEAR}: Hostess: ${attendee.name}: ${attendee.phone}`,
     });
 
     const paidSQL = `INSERT INTO eventPayments 
