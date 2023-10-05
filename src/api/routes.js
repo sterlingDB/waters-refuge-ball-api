@@ -142,7 +142,10 @@ async function getCosts(dbConn){
 
 async function getAttendee(dbConn, uuid){
 
-  const sql = `SELECT * FROM eventAttendees WHERE uuid=?;`;
+  const sql = `SELECT eventAttendees.*, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
+  FROM eventAttendees 
+  LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid 
+  WHERE eventAttendees.uuid=?;`;
   const results = await dbConn.query(sql, [uuid]);
 
   const data = results[0][0];
@@ -323,7 +326,24 @@ router.post('/calculateTotalPrice', async (req, res) => {
   }
 });
 
+router.post('/getAttendee', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
 
+    const attendee = await getAttendee(conn, args.uuid);
+    conn.end();
+
+attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd')
+
+
+    return res.status(200).json(attendee);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
 
 
 
@@ -333,36 +353,49 @@ router.post('/payment', async (req, res) => {
     const conn = await mysql.createConnection(mysqlServer);
 
     const chargeAmount = await calculateTotalPrice(conn, args.uuid);
-
-    // const sql = `SELECT * FROM eventAttendees 
-    // WHERE uuid=?;`;
-    // const results = await conn.query(sql, [args.uuid]);
-
     const attendee = await getAttendee(conn, args.uuid);
 
-    const { result } = await client.paymentsApi.createPayment({
-      locationId: process.env.SQUARE_LOCATION_ID,
-      sourceId: args.sourceId,
-      idempotencyKey: randomUUID(),
-      amountMoney: {
-        amount: chargeAmount.charge,
-        currency: 'USD',
-      },
-      reference_id: args.uuid,
-      buyer_email_address: attendee.email,
-      note: `Refuge Ball ${process.env.REFUGE_BALL_YEAR}: Hostess: ${attendee.name}: ${attendee.phone}`,
-    });
+    let squareResults
+
+    try {
+      const processResults = await client.paymentsApi.createPayment({
+        locationId: process.env.SQUARE_LOCATION_ID,
+        sourceId: args.sourceId,
+        idempotencyKey: randomUUID(),
+        amountMoney: {
+          amount: chargeAmount.charge,
+          currency: 'USD',
+        },
+        reference_id: args.uuid,
+        buyer_email_address: attendee.email,
+        note: `Refuge Ball ${process.env.REFUGE_BALL_YEAR}: Hostess: ${attendee.name}: ${attendee.phone}`,
+      });
+      squareResults = processResults.result.payment
+    } catch (err) {
+      if (err instanceof ApiError) {
+        // likely an error in the request. don't retry
+        console.log(err.errors);
+        return res.status(err.statusCode).json({ result:"error", squareResults:{status:"ERROR"} });
+
+      } else {
+        logger.error(`Error creating payment on attempt ${attempt}: ${err}`);
+        return res.status(err.statusCode).json({ result:"error", squareResults:{status:"ERROR", error:err} });
+
+      }
+    }
 
     const paidSQL = `INSERT INTO eventPayments 
-    SET uuid=?, payment=?, amountMoney=?, applicationDetails=?, approvedMoney=?, cardDetails=?, totalMoney=?;`;
+    SET created=NOW(), uuid=?, payment=?, paymentId=?, orderId=?, receiptUrl=?, status=?, cardBrand=?, last4=?, amount=?;`;
     const paidResults = await conn.query(paidSQL, [
       args.uuid,
-      JSON.stringify(result.payment),
-      JSON.stringify(result.payment.amountMoney),
-      JSON.stringify(result.payment.applicationDetails),
-      JSON.stringify(result.payment.approvedMoney),
-      JSON.stringify(result.payment.cardDetails),
-      JSON.stringify(result.payment.totalMoney),
+      JSON.stringify(squareResults),
+      squareResults.id,
+      squareResults.orderId,
+      squareResults.receiptUrl,
+      squareResults.status,
+      squareResults.cardDetails.card.cardBrand,
+      squareResults.cardDetails.card.last4,
+      squareResults.approvedMoney.amount
     ]);
 
     const paidSQLUpdate = `UPDATE eventAttendees 
@@ -371,269 +404,15 @@ router.post('/payment', async (req, res) => {
     const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid]);
 
     conn.end();
-    return res.status(200).json({ success: 'good to go', result });
+
+    return res.status(200).json({ result:"success", squareResults });
+
   } catch (err) {
     console.error(err);
-    return res.status(400).json(err);
+    return res.status(400).json({ result:"error", squareResults:{status:"ERROR"} });
   }
 });
 
-router.post('/times', async (req, res) => {
-  try {
-    const args = req.body;
-    if (!args.date) {
-      return res.status(400).json({ error: 'no date passed' });
-    }
 
-    const conn = await mysql.createConnection(mysqlServer);
-
-    const sql = `SELECT timeslots.*,
-      timeslots.available_seats AS totalSeats,
-      IFNULL(SUM(reservations.reserved_seats),0) AS reservedSeats, 
-      (timeslots.available_seats - IFNULL(SUM(reservations.reserved_seats),0)) AS availableSeats
-      FROM timeslots 
-      LEFT JOIN reservations ON timeslots.id = reservations.slot_id AND reservations.is_deleted=0
-      WHERE timeslots.date_slot=?
-      AND timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR) 
-      GROUP BY timeslots.id
-      ORDER BY timeslots.date_slot, timeslots.time_slot;`;
-
-    const [results] = await conn.query(sql, args.date);
-    conn.end();
-
-    const returnData = results.map((x) => {
-      return {
-        id: x.id,
-        time: x.time_slot,
-        seats: {
-          available: +x.availableSeats,
-          reserverd: +x.reservedSeats,
-          total: +x.totalSeats,
-        },
-        showAfter: format(x.showAfter, 'yyyy-MM-dd HH:mm:ss'),
-      };
-    });
-
-    return res.status(200).json(returnData);
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/hold', async (req, res) => {
-  try {
-    const args = req.body;
-
-    if (args.seats <= 0)
-      return res.status(400).json({ error: 'not enough seats' });
-
-    const conn = await mysql.createConnection(mysqlServer);
-    const uuid = uuidv4();
-
-    const sqlTimeSlot = `SELECT * FROM timeslots WHERE id=?;`;
-    const [resultsTimeSlot] = await conn.query(sqlTimeSlot, [args.slotId]);
-    if (resultsTimeSlot.length === 0) {
-      return res.status(400).json({ error: 'no timeslot available' });
-    }
-
-    const totalSeats = +args.seats.adult + +args.seats.child;
-    const insertArgs = [
-      uuid,
-      args.slotId,
-      format(resultsTimeSlot[0].date_slot, 'yyyy-MM-dd'),
-      resultsTimeSlot[0].time_slot,
-      totalSeats,
-      args.seats.adult,
-      args.seats.child,
-      args.slotId,
-      totalSeats,
-    ];
-
-    const sql = `INSERT INTO reservations (uuid, slot_id, date_slot, time_slot, reserved_seats, adult_seats, child_seats) 
-      SELECT ?, ?, ?, ?, ?, ?, ? FROM 
-      (SELECT (timeslots.available_seats - IFNULL(SUM(reservations.reserved_seats),0)) AS availableSeats
-          FROM timeslots 
-          LEFT JOIN reservations ON timeslots.id = reservations.slot_id AND reservations.is_deleted=0
-          WHERE timeslots.id=?
-          GROUP BY timeslots.id) AS available 
-          WHERE available.availableSeats >= ?;`;
-    const [results] = await conn.query(sql, insertArgs);
-    conn.end();
-
-    if (results.insertId > 0) {
-      return res.status(200).json({ uuid });
-    } else {
-      return res.status(400).json({ error: 'not enough seats' });
-    }
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/reserve', async (req, res) => {
-  try {
-    const args = req.body;
-
-    if (!args.uuid) {
-      return res.status(400).json({ error: 'reservation not found' });
-    }
-
-    const conn = await mysql.createConnection(mysqlServer);
-
-    const sqlResValid = `SELECT * FROM reservations WHERE uuid=?;`;
-    const resultsResValid = await conn.query(sqlResValid, [args.uuid]);
-    if (resultsResValid[0].length === 0) {
-      conn.end();
-      return res.status(400).json({ error: 'reservation not found' });
-    }
-    // if(resultsResValid[0][0].reserved_seats != ((+args.seats.adult) + (+args.seats.child))){
-    //   conn.end();
-    //   return res.status(400).json({error:"adult and child seats do not = reservation"});
-    // }
-    if (resultsResValid[0][0].is_deleted === 1) {
-      conn.end();
-      return res.status(400).json({ error: 'hold time has expired' });
-    }
-    if (resultsResValid[0][0].reservation_complete === 1) {
-      conn.end();
-      return res
-        .status(400)
-        .json({ success: 'reservation already completed, no more changes' });
-    }
-    const updateArgs = [
-      args.name,
-      args.phone,
-      args.email,
-      args.cast,
-      args.uuid,
-    ];
-
-    const sql = `UPDATE reservations 
-      SET name=?, phone=?, email=?, cast_member_name=?, reservation_complete=1
-      WHERE uuid = ?
-      AND is_deleted=0
-      AND reservation_complete=0;`;
-    const results = await conn.query(sql, updateArgs);
-    conn.end();
-
-    let returnData;
-    let emailResults;
-    let smsResults;
-
-    if (results[0].affectedRows > 0) {
-      sms({ uuid: args.uuid });
-      email({ uuid: args.uuid });
-
-      //  axios.get('https://faas-nyc1-2ef2e6cc.doserverless.co/api/v1/web/fn-abdb044a-388f-4e27-89e8-849a449d10f6/wtc/sendgrid', {
-      //   params: {
-      //     uuid: args.uuid
-      //   }
-      // })
-      // .then(function (response) {
-      //   console.log(response);
-      //   emailResults = response;
-      // })
-      // .catch(function (error) {
-      //   console.log(error);
-      //   emailResults = error;
-      // });
-
-      //  axios.get('https://faas-nyc1-2ef2e6cc.doserverless.co/api/v1/web/fn-abdb044a-388f-4e27-89e8-849a449d10f6/wtc/sms', {
-      //   params: {
-      //     uuid: args.uuid
-      //   }
-      // })
-      // .then(function (response) {
-      //   console.log(response);
-      //   smsResults = response;
-      // })
-      // .catch(function (error) {
-      //   console.log(error);
-      //   smsResults = error;
-      // });
-
-      return res.status(200).json({ success: 'good to go' });
-    } else {
-      return res.status(400).json({ error: 'no clue' });
-    }
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/cancel', async (req, res) => {
-  const args = req.body;
-
-  try {
-    if (!args.uuid) return res.status(400).json({ error: 'invalid uuid' });
-
-    const conn = await mysql.createConnection(mysqlServer);
-    const sql = `DELETE FROM reservations WHERE uuid=? AND reservation_complete=0;`;
-    const results = await conn.query(sql, [args.uuid]);
-    conn.end();
-
-    return res.status(200).json({ success: 'good to go' });
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.get('/delete_holds', async (req, res) => {
-  const args = req.body;
-
-  try {
-    const conn = await mysql.createConnection(mysqlServer);
-    const sql = `DELETE FROM reservations WHERE reservation_complete=0 AND created_at < (NOW() - INTERVAL 5 MINUTE) AND is_deleted=0;`;
-    const results = await conn.query(sql);
-    conn.end();
-
-    return res.status(200).json({ success: 'good to go' });
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/waitlist', async (req, res) => {
-  const args = req.body;
-
-  try {
-    if (!args.date) return res.status(400).json({ error: 'date required' });
-
-    const uuid = uuidv4();
-
-    const updateArgs = [
-      args.name,
-      args.phone,
-      args.email,
-      args.date,
-      +args.seats.adult + +args.seats.child,
-      args.seats.adult,
-      args.seats.child,
-      uuid,
-    ];
-
-    const conn = await mysql.createConnection(mysqlServer);
-    const sql = `INSERT INTO waitlists
-        (name, phone, email, date_slot, seats, adult_seats, child_seats, uuid) 
-      VALUES (?,?,?,?,?,?,?,?);`;
-    const results = await conn.query(sql, updateArgs);
-    conn.end();
-
-    let returnData;
-    if (results[0].affectedRows > 0) {
-      return res.status(200).json({ success: 'good to go' });
-    } else {
-      return res.status(400).json({ error: 'no clue' });
-    }
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json({ error: err });
-  }
-});
 
 module.exports = router;
