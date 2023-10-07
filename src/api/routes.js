@@ -199,6 +199,43 @@ router.get('/status', async (req, res) => {
   }
 });
 
+router.get('/getCosts', async (req, res) => {
+  try {
+
+    const conn = await mysql.createConnection(mysqlServer);
+    const costs = await getCosts(conn);
+    conn.end();
+
+    return res.status(200).json(costs );
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+router.post('/cancel', async (req, res) => {
+  try {
+    const args = req.body;
+    const sqlA = `UPDATE eventAttendees
+    LEFT JOIN eventTables ON eventAttendees.id = eventTables.hostessId
+    SET eventTables.hostessId = null
+    WHERE eventAttendees.uuid=?;`;
+    const sqlB = `DELETE FROM eventAttendees WHERE uuid=?;`;
+    const conn = await mysql.createConnection(mysqlServer);
+    const resultsA = await conn.query(sqlA, [args.uuid]);
+    const resultsB = await conn.query(sqlB, [args.uuid]);
+
+    conn.end();
+
+    return res.status(200).json("canceled");
+
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
 router.get('/availableForHosting', async (req, res) => {
   try {
     const conn = await mysql.createConnection(mysqlServer);
@@ -262,7 +299,7 @@ router.post('/reserveHostess', async (req, res) => {
     const uuid = uuidv4();
 
     const conn = await mysql.createConnection(mysqlServer);
-
+    args.ticketOptions[1]
     const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
     FROM eventTables
     WHERE eventTables.eventDate=?
@@ -278,9 +315,11 @@ router.post('/reserveHostess', async (req, res) => {
       args.eventDate,
       tableResults[0][0].tableNumber,
       uuid,
+      (args.ticketOptions.includes("hostess") ? 1:0),
+      (args.ticketOptions.includes("specialDinner") ? 1:0)
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=1;`;
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?;`;
     const results = await conn.query(sql, updateArgs);
 
     const hostessId = results[0].insertId;
