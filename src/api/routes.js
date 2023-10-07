@@ -9,13 +9,9 @@ const sgMail = require('@sendgrid/mail');
 const isProduction = process.env.NODE_ENV === 'production';
 
 const { ApiError, Client, Environment } = require('square');
-//import { Client } from 'square';
 
 const { randomUUID } = require('crypto');
-// const { paymentsApi } = new Client({
-//   accessToken: process.env.SQUARE_ACCESS_TOKEN,
-//   environment: 'sandbox',
-// });
+
 
 const client = new Client({
   environment: isProduction ? Environment.Production : Environment.Sandbox,
@@ -213,7 +209,6 @@ router.get('/getCosts', async (req, res) => {
   }
 });
 
-
 router.post('/cancel', async (req, res) => {
   try {
     const args = req.body;
@@ -264,29 +259,16 @@ router.get('/availableForHosting', async (req, res) => {
   }
 });
 
-router.get('/dates', async (req, res) => {
+router.post('/calculateTotalPrice', async (req, res) => {
   try {
-    //       WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR)
-
+    const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
-    const sql = `SELECT eventTables.*, COUNT(attendees.id) AS seatsFilled, (eventTables.seats - COUNT(attendees.id)) AS openSeats, if(attendees.isHostess, 1, 0) AS hasHostess, if(attendees.isHostess, attendees.name, '') AS hostessName
-    FROM eventTables
-    LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
-    GROUP BY eventTables.id;`;
-    const [results] = await conn.query(sql);
+
+    const chargeAmount = await calculateTotalPrice(conn, args.uuid);
     conn.end();
 
-    const returnData = results.map((x) => {
-      return {
-        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
-        tableNumber: x.tableNumber,
-        openSeats: x.openSeats,
-        hasHostess: x.hasHostess,
-        hostessName: x.hostessName,
-      };
-    });
+    return res.status(200).json(chargeAmount);
 
-    return res.status(200).json(returnData);
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
@@ -348,43 +330,6 @@ router.post('/reserveHostess', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
-router.post('/calculateTotalPrice', async (req, res) => {
-  try {
-    const args = req.body;
-    const conn = await mysql.createConnection(mysqlServer);
-
-    const chargeAmount = await calculateTotalPrice(conn, args.uuid);
-    conn.end();
-
-    return res.status(200).json(chargeAmount);
-
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/getAttendee', async (req, res) => {
-  try {
-    const args = req.body;
-    const conn = await mysql.createConnection(mysqlServer);
-
-    const attendee = await getAttendee(conn, args.uuid);
-    conn.end();
-
-attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd')
-
-
-    return res.status(200).json(attendee);
-
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-
 
 router.post('/payment', async (req, res) => {
   try {
@@ -451,6 +396,61 @@ router.post('/payment', async (req, res) => {
     return res.status(400).json({ result:"error", squareResults:{status:"ERROR"} });
   }
 });
+
+router.post('/getAttendee', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const attendee = await getAttendee(conn, args.uuid);
+    conn.end();
+
+    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd')
+
+    return res.status(200).json(attendee);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+// router.get('/dates', async (req, res) => {
+//   try {
+//     //       WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR)
+
+//     const conn = await mysql.createConnection(mysqlServer);
+//     const sql = `SELECT eventTables.*, COUNT(attendees.id) AS seatsFilled, (eventTables.seats - COUNT(attendees.id)) AS openSeats, if(attendees.isHostess, 1, 0) AS hasHostess, if(attendees.isHostess, attendees.name, '') AS hostessName
+//     FROM eventTables
+//     LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
+//     GROUP BY eventTables.id;`;
+//     const [results] = await conn.query(sql);
+//     conn.end();
+
+//     const returnData = results.map((x) => {
+//       return {
+//         eventDate: format(x.eventDate, 'yyyy-MM-dd'),
+//         tableNumber: x.tableNumber,
+//         openSeats: x.openSeats,
+//         hasHostess: x.hasHostess,
+//         hostessName: x.hostessName,
+//       };
+//     });
+
+//     return res.status(200).json(returnData);
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(400).json(err);
+//   }
+// });
+
+
+
+
+
+
+
 
 
 
