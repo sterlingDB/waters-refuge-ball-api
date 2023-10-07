@@ -94,8 +94,8 @@ async function email(args) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: resultsReservation.email,
-      from: 'wtc@thewaterschurch.net',
-      subject: 'Walk Through Christmas Confirmation',
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Confirmation',
       templateId: 'd-1dff75d26e804fa79260d7a1c17cade3',
       dynamicTemplateData: {
         name: resultsReservation.name,
