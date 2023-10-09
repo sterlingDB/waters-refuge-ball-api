@@ -73,31 +73,68 @@ Can't wait to see you here!`;
     conn.end();
   }
 }
-
-async function hostessEmail(args) {
+async function smsHostess(uuid) {
+  if (!uuid) {
+    return { error: 'uuid is required' };
+  }
   const conn = await mysql.createConnection(mysqlServer);
 
   try {
-    if (!args.uuid) {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const client = require('twilio')(accountSid, authToken);
+
+    const attendee = await getAttendee(conn, uuid);
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+    const body = `Your a Refuge Ball 2024 table hostess!
+We have your hostess spots reserved for ${eventDateFormatted}.
+More info will follow!`;
+
+    const foo = await client.messages
+      .create({
+        body: body,
+        from: '+13203453479',
+        to: attendee.phone,
+      })
+      .then(async (message) => {
+        console.log('text sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET confirmation_text_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+
+        return message;
+      });
+
+    return { success: foo.sid };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+async function hostessEmail(uuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!uuid) {
       return { error: 'reservation not found' };
     }
 
-    const uuid = args.uuid;
     const attendee = await getAttendee(conn, uuid);
 
-    const resDateTime = new Date(
-      format(resultsReservation.date_slot, 'yyyy-MM-dd') + 'T 00:00:00'
-    );
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
-      to: resultsReservation.email,
+      to: attendee.email,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Confirmation',
       templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
       dynamicTemplateData: {
-        name: resultsReservation.name,
-        date: format(resDateTime, 'eeee MMMM do'),
+        name: attendee.name,
+        date: eventDateFormatted,
       },
     };
     await sgMail
@@ -105,7 +142,7 @@ async function hostessEmail(args) {
       .then(async (foo) => {
         console.log('Email sent');
 
-        const sqlUpdate = `UPDATE reservations SET reservation_email_sent=1 WHERE uuid=?;`;
+        const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
         const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
       })
       .catch((error) => {
@@ -206,6 +243,18 @@ async function calculateTotalPrice(dbConn, uuid) {
 
   return { charge: chargeAmount * 100, display: chargeAmount };
 }
+
+router.get('/hostessEmail', async (req, res) => {
+  try {
+    //const emailResponce = await hostessEmail(req.query.uuid);
+    const textResponce = await smsHostess(req.query.uuid);
+
+    return res.status(200).json(textResponce);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
 
 router.get('/status', async (req, res) => {
   try {
@@ -357,7 +406,7 @@ router.post('/reserveHostess', async (req, res) => {
 
     if (results[0].affectedRows > 0) {
       // sms({ uuid: args.uuid });
-      hostessEmail({ uuid: args.uuid });
+      //hostessEmail({ uuid: args.uuid });
       return res.status(200).json({ success: 'good to go', uuid });
     } else {
       return res.status(400).json({ error: 'no clue' });
@@ -375,8 +424,8 @@ router.post('/payment', async (req, res) => {
 
     const chargeAmount = await calculateTotalPrice(conn, args.uuid);
     const attendee = await getAttendee(conn, args.uuid);
-    console.log(attendee);
-    console.log(chargeAmount);
+    //console.log(attendee);
+    //console.log(chargeAmount);
 
     let squareResults;
 
@@ -394,7 +443,7 @@ router.post('/payment', async (req, res) => {
         note: `Refuge Ball ${process.env.REFUGE_BALL_YEAR}: Hostess: ${attendee.name}: ${attendee.phone}`,
       });
       squareResults = processResults.result.payment;
-      console.log(squareResults);
+      //console.log(squareResults);
     } catch (err) {
       if (err instanceof ApiError) {
         // likely an error in the request. don't retry
@@ -429,6 +478,8 @@ router.post('/payment', async (req, res) => {
     SET hasPaid=1
     WHERE uuid=?;`;
     const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid]);
+
+    hostessEmail(args.uuid);
 
     conn.end();
 
