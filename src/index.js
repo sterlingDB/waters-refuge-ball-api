@@ -132,9 +132,9 @@ if (process.env.NODE_ENV === 'development') {
 if (process.env.NODE_ENV === 'production') {
   // Vhost app
 
-  app.use(vhost('www.walkthroughchristmas.com', www));
-  app.use(vhost('admin.walkthroughchristmas.com', admin));
-  app.use(vhost('walkthroughchristmas.com', www));
+  app.use(vhost('www.refugeball.com', www));
+  app.use(vhost('admin.refugeball.com', admin));
+  app.use(vhost('refugeball.com', www));
 
   // Starting both http & https servers
   const httpServer = http.createServer(app);
@@ -145,15 +145,15 @@ if (process.env.NODE_ENV === 'production') {
 
   // walkthroughchristmas.com cert
   const privateKey = fs.readFileSync(
-    '/etc/letsencrypt/live/walkthroughchristmas.com/privkey.pem',
+    '/etc/letsencrypt/live/refugeball.com/privkey.pem',
     'utf8'
   );
   const certificate = fs.readFileSync(
-    '/etc/letsencrypt/live/walkthroughchristmas.com/cert.pem',
+    '/etc/letsencrypt/live/refugeball.com/cert.pem',
     'utf8'
   );
   const ca = fs.readFileSync(
-    '/etc/letsencrypt/live/walkthroughchristmas.com/chain.pem',
+    '/etc/letsencrypt/live/refugeball.com/chain.pem',
     'utf8'
   );
 
@@ -165,15 +165,15 @@ if (process.env.NODE_ENV === 'production') {
 
   // *.walkthroughchristmas.com cert
   const privateKey2 = fs.readFileSync(
-    '/etc/letsencrypt/live/walkthroughchristmas.com-0001/privkey.pem',
+    '/etc/letsencrypt/live/refugeball.com/privkey.pem',
     'utf8'
   );
   const certificate2 = fs.readFileSync(
-    '/etc/letsencrypt/live/walkthroughchristmas.com-0001/cert.pem',
+    '/etc/letsencrypt/live/refugeball.com/cert.pem',
     'utf8'
   );
   const ca2 = fs.readFileSync(
-    '/etc/letsencrypt/live/walkthroughchristmas.com-0001/chain.pem',
+    '/etc/letsencrypt/live/refugeball.com/chain.pem',
     'utf8'
   );
 
@@ -184,8 +184,8 @@ if (process.env.NODE_ENV === 'production') {
   };
 
   const httpsServer = https.createServer(credentials, app);
-  httpsServer.addContext('www.walkthroughchristmas.com', credentials2);
-  httpsServer.addContext('admin.walkthroughchristmas.com', credentials2);
+  httpsServer.addContext('www.refugeball.com', credentials2);
+  httpsServer.addContext('admin.refugeball.com', credentials2);
 
   httpsServer.listen(443, () => {
     console.log('HTTPS Server running on port 443');
