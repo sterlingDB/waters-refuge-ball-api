@@ -73,7 +73,55 @@ Can't wait to see you here!`;
     conn.end();
   }
 }
-async function email(args) {
+
+async function hostessEmail(args) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!args.uuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const uuid = args.uuid;
+    const attendee = await getAttendee(conn, uuid);
+
+    const resDateTime = new Date(
+      format(resultsReservation.date_slot, 'yyyy-MM-dd') + 'T 00:00:00'
+    );
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: resultsReservation.email,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Confirmation',
+      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
+      dynamicTemplateData: {
+        name: resultsReservation.name,
+        date: format(resDateTime, 'eeee MMMM do'),
+      },
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        const sqlUpdate = `UPDATE reservations SET reservation_email_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+async function generalEmail(args) {
   const conn = await mysql.createConnection(mysqlServer);
 
   try {
@@ -96,7 +144,7 @@ async function email(args) {
       to: resultsReservation.email,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Confirmation',
-      templateId: 'd-1dff75d26e804fa79260d7a1c17cade3',
+      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
       dynamicTemplateData: {
         name: resultsReservation.name,
         seats: resultsReservation.reserved_seats,
@@ -125,7 +173,6 @@ async function email(args) {
     conn.end();
   }
 }
-
 async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
   const results = await dbConn.query(sql);
@@ -309,9 +356,8 @@ router.post('/reserveHostess', async (req, res) => {
     let smsResults;
 
     if (results[0].affectedRows > 0) {
-      sms({ uuid: args.uuid });
-      email({ uuid: args.uuid });
-
+      // sms({ uuid: args.uuid });
+      hostessEmail({ uuid: args.uuid });
       return res.status(200).json({ success: 'good to go', uuid });
     } else {
       return res.status(400).json({ error: 'no clue' });
