@@ -368,7 +368,7 @@ router.post('/reserveHostess', async (req, res) => {
     const uuid = uuidv4();
 
     const conn = await mysql.createConnection(mysqlServer);
-    args.ticketOptions[1];
+
     const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
     FROM eventTables
     WHERE eventTables.eventDate=?
