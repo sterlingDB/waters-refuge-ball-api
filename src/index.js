@@ -56,10 +56,10 @@ const api = require('./api/routes');
 
 www.use(redirectController, express.static(path.join(__dirname, 'public')));
 
-www.use('/schedule', async (req, res) => {
+www.use('/register', async (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
-www.use('/reserve', async (req, res) => {
+www.use('/payment', async (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 www.use('/confirm', async (req, res) => {
