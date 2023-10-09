@@ -12,7 +12,6 @@ const { ApiError, Client, Environment } = require('square');
 
 const { randomUUID } = require('crypto');
 
-
 const client = new Client({
   environment: isProduction ? Environment.Production : Environment.Sandbox,
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
@@ -126,18 +125,15 @@ async function email(args) {
   }
 }
 
-async function getCosts(dbConn){
-
+async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
   const results = await dbConn.query(sql);
 
   const costs = results[0][0];
-  return costs
-
+  return costs;
 }
 
-async function getAttendee(dbConn, uuid){
-
+async function getAttendee(dbConn, uuid) {
   const sql = `SELECT eventAttendees.*, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
   LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid 
@@ -145,24 +141,22 @@ async function getAttendee(dbConn, uuid){
   const results = await dbConn.query(sql, [uuid]);
 
   const data = results[0][0];
-  return data
-
+  return data;
 }
 
-async function calculateTotalPrice(dbConn, uuid){
-    const costs = await getCosts(dbConn);
-    const attendee = await getAttendee(dbConn, uuid);
-   
-    let chargeAmount = costs.general;
-    if(attendee.isHostess){
-      chargeAmount = costs.hostess
-    }
-    if(attendee.specialDinner){
-      chargeAmount += costs.specialDinner
-    }
-    
-    return {charge:chargeAmount*100, display:chargeAmount};
+async function calculateTotalPrice(dbConn, uuid) {
+  const costs = await getCosts(dbConn);
+  const attendee = await getAttendee(dbConn, uuid);
 
+  let chargeAmount = costs.general;
+  if (attendee.isHostess) {
+    chargeAmount = costs.hostess;
+  }
+  if (attendee.specialDinner) {
+    chargeAmount += costs.specialDinner;
+  }
+
+  return { charge: chargeAmount * 100, display: chargeAmount };
 }
 
 router.get('/status', async (req, res) => {
@@ -197,12 +191,11 @@ router.get('/status', async (req, res) => {
 
 router.get('/getCosts', async (req, res) => {
   try {
-
     const conn = await mysql.createConnection(mysqlServer);
     const costs = await getCosts(conn);
     conn.end();
 
-    return res.status(200).json(costs );
+    return res.status(200).json(costs);
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
@@ -223,8 +216,7 @@ router.post('/cancel', async (req, res) => {
 
     conn.end();
 
-    return res.status(200).json("canceled");
-
+    return res.status(200).json('canceled');
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
@@ -251,7 +243,6 @@ router.get('/availableForHosting', async (req, res) => {
       };
     });
 
-
     return res.status(200).json(returnData);
   } catch (err) {
     console.error(err);
@@ -268,7 +259,6 @@ router.post('/calculateTotalPrice', async (req, res) => {
     conn.end();
 
     return res.status(200).json(chargeAmount);
-
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
@@ -281,7 +271,7 @@ router.post('/reserveHostess', async (req, res) => {
     const uuid = uuidv4();
 
     const conn = await mysql.createConnection(mysqlServer);
-    args.ticketOptions[1]
+    args.ticketOptions[1];
     const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
     FROM eventTables
     WHERE eventTables.eventDate=?
@@ -297,8 +287,8 @@ router.post('/reserveHostess', async (req, res) => {
       args.eventDate,
       tableResults[0][0].tableNumber,
       uuid,
-      (args.ticketOptions.includes("hostess") ? 1:0),
-      (args.ticketOptions.includes("specialDinner") ? 1:0)
+      args.ticketOptions.includes('hostess') ? 1 : 0,
+      args.ticketOptions.includes('specialDinner') ? 1 : 0,
     ];
     const sql = `INSERT INTO eventAttendees 
       SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?;`;
@@ -333,13 +323,13 @@ router.post('/reserveHostess', async (req, res) => {
 
 router.post('/payment', async (req, res) => {
   try {
-    const args = req.body;    
+    const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
 
     const chargeAmount = await calculateTotalPrice(conn, args.uuid);
     const attendee = await getAttendee(conn, args.uuid);
 
-    let squareResults
+    let squareResults;
 
     try {
       const processResults = await client.paymentsApi.createPayment({
@@ -354,17 +344,22 @@ router.post('/payment', async (req, res) => {
         buyer_email_address: attendee.email,
         note: `Refuge Ball ${process.env.REFUGE_BALL_YEAR}: Hostess: ${attendee.name}: ${attendee.phone}`,
       });
-      squareResults = processResults.result.payment
+      squareResults = processResults.result.payment;
     } catch (err) {
       if (err instanceof ApiError) {
         // likely an error in the request. don't retry
         console.log(err.errors);
-        return res.status(err.statusCode).json({ result:"error", squareResults:{status:"ERROR"} });
-
+        return res
+          .status(err.statusCode)
+          .json({ result: 'error', squareResults: { status: err.errors } });
       } else {
         logger.error(`Error creating payment on attempt ${attempt}: ${err}`);
-        return res.status(err.statusCode).json({ result:"error", squareResults:{status:"ERROR", error:err} });
-
+        return res
+          .status(err.statusCode)
+          .json({
+            result: 'error',
+            squareResults: { status: err.errors, error: err },
+          });
       }
     }
 
@@ -379,7 +374,7 @@ router.post('/payment', async (req, res) => {
       squareResults.status,
       squareResults.cardDetails.card.cardBrand,
       squareResults.cardDetails.card.last4,
-      squareResults.approvedMoney.amount
+      squareResults.approvedMoney.amount,
     ]);
 
     const paidSQLUpdate = `UPDATE eventAttendees 
@@ -389,11 +384,12 @@ router.post('/payment', async (req, res) => {
 
     conn.end();
 
-    return res.status(200).json({ result:"success", squareResults });
-
+    return res.status(200).json({ result: 'success', squareResults });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({ result:"error", squareResults:{status:"ERROR"} });
+    return res
+      .status(400)
+      .json({ result: 'error', squareResults: { status: 'ERROR' } });
   }
 });
 
@@ -405,16 +401,14 @@ router.post('/getAttendee', async (req, res) => {
     const attendee = await getAttendee(conn, args.uuid);
     conn.end();
 
-    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd')
+    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
 
     return res.status(200).json(attendee);
-
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
   }
 });
-
 
 // router.get('/dates', async (req, res) => {
 //   try {
@@ -444,14 +438,5 @@ router.post('/getAttendee', async (req, res) => {
 //     return res.status(400).json(err);
 //   }
 // });
-
-
-
-
-
-
-
-
-
 
 module.exports = router;
