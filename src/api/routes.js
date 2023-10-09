@@ -388,7 +388,7 @@ router.post('/reserveHostess', async (req, res) => {
       args.ticketOptions.includes('specialDinner') ? 1 : 0,
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?;`;
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
     const hostessId = results[0].insertId;
