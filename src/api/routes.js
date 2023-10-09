@@ -22,7 +22,7 @@ BigInt.prototype.toJSON = function() {
   return this.toString();
 };
 
-async function sms(args) {
+async function generalSms(args) {
   if (!args.uuid) {
     return { error: 'uuid is required' };
   }
@@ -73,7 +73,60 @@ Can't wait to see you here!`;
     conn.end();
   }
 }
-async function smsHostess(uuid) {
+async function generalEmail(args) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!args.uuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const uuid = args.uuid;
+    const sqlReservation = `SELECT * FROM reservations WHERE uuid=?;`;
+    const [[resultsReservation]] = await conn.query(sqlReservation, [uuid]);
+
+    const resDateTime = new Date(
+      format(resultsReservation.date_slot, 'yyyy-MM-dd') +
+        'T' +
+        resultsReservation.time_slot
+    );
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: resultsReservation.email,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Confirmation',
+      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
+      dynamicTemplateData: {
+        name: resultsReservation.name,
+        seats: resultsReservation.reserved_seats,
+        date: format(resDateTime, 'eeee MMMM do'),
+        time: format(resDateTime, 'hh:mm aaa'),
+      },
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        const sqlUpdate = `UPDATE reservations SET reservation_email_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
+async function hostessSms(uuid) {
   if (!uuid) {
     return { error: 'uuid is required' };
   }
@@ -158,58 +211,7 @@ async function hostessEmail(uuid) {
     conn.end();
   }
 }
-async function generalEmail(args) {
-  const conn = await mysql.createConnection(mysqlServer);
 
-  try {
-    if (!args.uuid) {
-      return { error: 'reservation not found' };
-    }
-
-    const uuid = args.uuid;
-    const sqlReservation = `SELECT * FROM reservations WHERE uuid=?;`;
-    const [[resultsReservation]] = await conn.query(sqlReservation, [uuid]);
-
-    const resDateTime = new Date(
-      format(resultsReservation.date_slot, 'yyyy-MM-dd') +
-        'T' +
-        resultsReservation.time_slot
-    );
-
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    const msg = {
-      to: resultsReservation.email,
-      from: 'refuge@thewaterschurch.net',
-      subject: 'Refuge Ball Confirmation',
-      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
-      dynamicTemplateData: {
-        name: resultsReservation.name,
-        seats: resultsReservation.reserved_seats,
-        date: format(resDateTime, 'eeee MMMM do'),
-        time: format(resDateTime, 'hh:mm aaa'),
-      },
-    };
-    await sgMail
-      .send(msg)
-      .then(async (foo) => {
-        console.log('Email sent');
-
-        const sqlUpdate = `UPDATE reservations SET reservation_email_sent=1 WHERE uuid=?;`;
-        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
-      })
-      .catch((error) => {
-        console.error(error);
-        return { error };
-      });
-
-    return { success: 'good to go' };
-  } catch (err) {
-    console.error(err);
-    return { error: err };
-  } finally {
-    conn.end();
-  }
-}
 async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
   const results = await dbConn.query(sql);
@@ -247,7 +249,7 @@ async function calculateTotalPrice(dbConn, uuid) {
 router.get('/hostessEmail', async (req, res) => {
   try {
     //const emailResponce = await hostessEmail(req.query.uuid);
-    const textResponce = await smsHostess(req.query.uuid);
+    const textResponce = await hostessSms(req.query.uuid);
 
     return res.status(200).json(textResponce);
   } catch (err) {
@@ -479,7 +481,10 @@ router.post('/payment', async (req, res) => {
     WHERE uuid=?;`;
     const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid]);
 
-    hostessEmail(args.uuid);
+    if (attendee.isHostess) {
+      hostessEmail(args.uuid);
+      hostessSms(args.uuid);
+    }
 
     conn.end();
 
