@@ -345,6 +345,7 @@ router.post('/payment', async (req, res) => {
         note: `Refuge Ball ${process.env.REFUGE_BALL_YEAR}: Hostess: ${attendee.name}: ${attendee.phone}`,
       });
       squareResults = processResults.result.payment;
+      console.log(squareResults);
     } catch (err) {
       if (err instanceof ApiError) {
         // likely an error in the request. don't retry
@@ -354,12 +355,10 @@ router.post('/payment', async (req, res) => {
           .json({ result: 'error', squareResults: { status: err.errors } });
       } else {
         logger.error(`Error creating payment on attempt ${attempt}: ${err}`);
-        return res
-          .status(err.statusCode)
-          .json({
-            result: 'error',
-            squareResults: { status: err.errors, error: err },
-          });
+        return res.status(err.statusCode).json({
+          result: 'error',
+          squareResults: { status: err.errors, error: err },
+        });
       }
     }
 
