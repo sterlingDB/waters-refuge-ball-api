@@ -328,6 +328,8 @@ router.post('/payment', async (req, res) => {
 
     const chargeAmount = await calculateTotalPrice(conn, args.uuid);
     const attendee = await getAttendee(conn, args.uuid);
+    console.log(attendee);
+    console.log(chargeAmount);
 
     let squareResults;
 
