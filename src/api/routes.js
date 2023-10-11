@@ -369,6 +369,9 @@ router.post('/reserveHostess', async (req, res) => {
     const args = req.body;
     const uuid = uuidv4();
 
+    const isFree = args.specialCode === 'free2024' ? true : false;
+    const paidCash = args.specialCode === 'cash2024' ? true : false;
+
     const conn = await mysql.createConnection(mysqlServer);
 
     const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
@@ -384,13 +387,14 @@ router.post('/reserveHostess', async (req, res) => {
       args.phone,
       args.email,
       args.eventDate,
+      args.specialCode,
       tableResults[0][0].tableNumber,
       uuid,
       args.ticketOptions.includes('hostess') ? 1 : 0,
       args.ticketOptions.includes('specialDinner') ? 1 : 0,
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
+      SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
     const hostessId = results[0].insertId;
@@ -400,16 +404,32 @@ router.post('/reserveHostess', async (req, res) => {
     WHERE eventTables.id=${tableResults[0][0].id};`;
     const resultsUpdate = await conn.query(sqlTableNumberUpdate);
 
+    if (paidCash || isFree) {
+      if (paidCash) {
+        const updateRegistration = await conn.query(`UPDATE eventAttendees
+        SET hasPaid=1, paidCash=1
+        WHERE uuid="${uuid}";`);
+      }
+
+      if (isFree) {
+        const updateRegistration = await conn.query(`UPDATE eventAttendees
+        SET hasPaid=1, isFree=1
+        WHERE uuid="${uuid}";`);
+      }
+    }
+
     conn.end();
 
-    let returnData;
-    let emailResults;
-    let smsResults;
+    if (paidCash || isFree) {
+      return res
+        .status(200)
+        .json({ success: 'good to go', uuid, continue: 'confirm' });
+    }
 
     if (results[0].affectedRows > 0) {
-      // sms({ uuid: args.uuid });
-      //hostessEmail({ uuid: args.uuid });
-      return res.status(200).json({ success: 'good to go', uuid });
+      return res
+        .status(200)
+        .json({ success: 'good to go', uuid, continue: 'payment' });
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
