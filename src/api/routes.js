@@ -13,8 +13,8 @@ const { ApiError, Client, Environment } = require('square');
 const { randomUUID } = require('crypto');
 
 const client = new Client({
-  //environment: isProduction ? Environment.Production : Environment.Sandbox,
-  environment: Environment.Sandbox,
+  environment: isProduction ? Environment.Production : Environment.Sandbox,
+  //environment: Environment.Sandbox,
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 
