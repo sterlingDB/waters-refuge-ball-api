@@ -419,7 +419,7 @@ router.post('/reserveHostess', async (req, res) => {
         WHERE uuid="${uuid}";`);
       }
 
-      if (attendee.isHostess) {
+      if (isHostess) {
         hostessEmail(uuid);
         hostessSms(uuid);
       }
