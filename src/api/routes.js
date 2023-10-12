@@ -371,6 +371,8 @@ router.post('/reserveHostess', async (req, res) => {
 
     const isFree = args.specialCode === 'free2024' ? true : false;
     const paidCash = args.specialCode === 'cash2024' ? true : false;
+    const isHostess = args.ticketOptions.includes('hostess') ? 1 : 0;
+    const specialDinner = args.ticketOptions.includes('specialDinner') ? 1 : 0;
 
     const conn = await mysql.createConnection(mysqlServer);
 
@@ -390,8 +392,8 @@ router.post('/reserveHostess', async (req, res) => {
       args.specialCode,
       tableResults[0][0].tableNumber,
       uuid,
-      args.ticketOptions.includes('hostess') ? 1 : 0,
-      args.ticketOptions.includes('specialDinner') ? 1 : 0,
+      isHostess,
+      specialDinner,
     ];
     const sql = `INSERT INTO eventAttendees 
       SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
@@ -415,6 +417,11 @@ router.post('/reserveHostess', async (req, res) => {
         const updateRegistration = await conn.query(`UPDATE eventAttendees
         SET hasPaid=1, isFree=1
         WHERE uuid="${uuid}";`);
+      }
+
+      if (attendee.isHostess) {
+        hostessEmail(uuid);
+        hostessSms(uuid);
       }
     }
 
