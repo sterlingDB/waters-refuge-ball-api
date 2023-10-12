@@ -248,10 +248,10 @@ async function calculateTotalPrice(dbConn, uuid) {
 
 router.get('/hostessEmail', async (req, res) => {
   try {
-    //const emailResponce = await hostessEmail(req.query.uuid);
+    const emailResponce = await hostessEmail(req.query.uuid);
     const textResponce = await hostessSms(req.query.uuid);
 
-    return res.status(200).json(textResponce);
+    return res.status(200).json({ textResponce, emailResponce });
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
