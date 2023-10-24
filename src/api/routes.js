@@ -446,6 +446,31 @@ router.post('/reserveHostess', async (req, res) => {
   }
 });
 
+router.post('/getTableAttendees', async (req, res) => {
+  try {
+    const args = req.body;
+
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const sqlTableAttendees = `SELECT * FROM eventAttendees 
+      WHERE eventDate = ? 
+      AND tableNumber = ? 
+      ORDER BY isHostess DESC, name ASC;`;
+
+    const tableResults = await conn.query(sqlTableAttendees, [
+      args.eventDate,
+      args.tableNumber,
+    ]);
+    conn.end();
+
+    return res.status(200).json(tableResults[0]);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+// SELECT * FROM `waters_refuge_ball`.`eventAttendees` WHERE `eventDate` = '2024-04-12' AND `tableNumber` = '24' ORDER BY `created` DESC LIMIT 0,1000
+
 router.post('/payment', async (req, res) => {
   try {
     const args = req.body;
