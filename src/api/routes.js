@@ -446,6 +446,61 @@ router.post('/reserveHostess', async (req, res) => {
   }
 });
 
+router.post('/inviteAttendee', async (req, res) => {
+  try {
+    const args = req.body;
+    const newUuid = uuidv4();
+    const conn = await mysql.createConnection(mysqlServer);
+
+const hostess = await getAttendee(conn,args.uuid);
+
+
+
+
+    const updateArgs = [
+      args.name,
+      args.phone,
+      args.email,
+      hostess.eventDate,
+      hostess.tableNumber,
+      newUuid,
+    ];
+    const sql = `INSERT INTO eventAttendees 
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, created=NOW();`;
+    const results = await conn.query(sql, updateArgs);
+
+    const attendeeId = results[0].insertId;
+
+ 
+
+
+      // if (isHostess) {
+      //   hostessEmail(uuid);
+      //   hostessSms(uuid);
+      // }
+
+
+    conn.end();
+
+    // if (paidCash || isFree) {
+    //   return res
+    //     .status(200)
+    //     .json({ success: 'good to go', uuid, continue: 'confirm' });
+    // }
+
+    if (results[0].affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ success: 'good to go', newUuid});
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
 router.post('/getTableAttendees', async (req, res) => {
   try {
     const args = req.body;
