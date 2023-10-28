@@ -65,6 +65,9 @@ www.use('/payment', async (req, res) => {
 www.use('/confirm', async (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
+www.use('/hostess', async (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
 www.use('/api', api);
 
 // admin app
@@ -74,9 +77,6 @@ const adminApi = require('./admin-api/routes');
 
 admin.use(express.static(path.join(__dirname, 'admin-front')));
 admin.use('/reservations', async (req, res) => {
-  res.sendFile(__dirname + '/admin-front/index.html');
-});
-admin.use('/hostess', async (req, res) => {
   res.sendFile(__dirname + '/admin-front/index.html');
 });
 admin.use('/waitlist', async (req, res) => {
