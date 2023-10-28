@@ -452,10 +452,7 @@ router.post('/inviteAttendee', async (req, res) => {
     const newUuid = uuidv4();
     const conn = await mysql.createConnection(mysqlServer);
 
-const hostess = await getAttendee(conn,args.uuid);
-
-
-
+    const hostess = await getAttendee(conn,args.uuid);
 
     const updateArgs = [
       args.name,
@@ -471,27 +468,79 @@ const hostess = await getAttendee(conn,args.uuid);
 
     const attendeeId = results[0].insertId;
 
- 
-
-
-      // if (isHostess) {
-      //   hostessEmail(uuid);
-      //   hostessSms(uuid);
-      // }
-
-
     conn.end();
-
-    // if (paidCash || isFree) {
-    //   return res
-    //     .status(200)
-    //     .json({ success: 'good to go', uuid, continue: 'confirm' });
-    // }
 
     if (results[0].affectedRows > 0) {
       return res
         .status(200)
         .json({ success: 'good to go', newUuid});
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/transferAttendee', async (req, res) => {
+  try {
+    const args = req.body;
+    const newUuid = uuidv4();
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const hostess = await getAttendee(conn,args.uuid);
+
+    const updateArgs = [
+      args.name,
+      args.phone,
+      args.email,
+      args.uuid,
+    ];
+    const sql = `UPDATE eventAttendees 
+      SET name=?, phone=?, email=? 
+      WHERE uuid=?;`;
+    const results = await conn.query(sql, updateArgs);
+
+    const attendeeId = results[0].insertId;
+
+    conn.end();
+
+    if (results[0].affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ success: 'good to go', newUuid});
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/removeAttendee', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+    const attendee = await getAttendee(conn, args.uuid);
+
+    const sql = `UPDATE eventAttendees 
+      SET eventDate=null, tableNumber=null, name=null, phone=null, email=null, deleted=NOW(), deletedData=?
+      WHERE uuid=?;`;
+    const results = await conn.query(sql, [
+      JSON.stringify(attendee),
+      args.uuid,
+    ]);
+
+    const attendeeId = results[0].insertId;
+
+    conn.end();
+
+    if (results[0].affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ success: 'good to go', uuid: args.uuid});
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
