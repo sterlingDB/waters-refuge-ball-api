@@ -76,6 +76,9 @@ admin.use(express.static(path.join(__dirname, 'admin-front')));
 admin.use('/reservations', async (req, res) => {
   res.sendFile(__dirname + '/admin-front/index.html');
 });
+admin.use('/hostess', async (req, res) => {
+  res.sendFile(__dirname + '/admin-front/index.html');
+});
 admin.use('/waitlist', async (req, res) => {
   res.sendFile(__dirname + '/admin-front/index.html');
 });
