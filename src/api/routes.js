@@ -489,16 +489,18 @@ router.post('/transferAttendee', async (req, res) => {
     const newUuid = uuidv4();
     const conn = await mysql.createConnection(mysqlServer);
 
-    const hostess = await getAttendee(conn,args.uuid);
+    const attendee = await getAttendee(conn, args.uuid);
+    const originalData = [JSON.parse(attendee.originalData),attendee];
 
     const updateArgs = [
       args.name,
       args.phone,
       args.email,
+      JSON.stringify(originalData),
       args.uuid,
     ];
     const sql = `UPDATE eventAttendees 
-      SET name=?, phone=?, email=? 
+      SET name=?, phone=?, email=?, originalData=?
       WHERE uuid=?;`;
     const results = await conn.query(sql, updateArgs);
 
@@ -526,7 +528,7 @@ router.post('/removeAttendee', async (req, res) => {
     const attendee = await getAttendee(conn, args.uuid);
 
     const sql = `UPDATE eventAttendees 
-      SET eventDate=null, tableNumber=null, name=null, phone=null, email=null, deleted=NOW(), deletedData=?
+      SET eventDate=null, tableNumber=null, name=null, phone=null, email=null, deleted=NOW(), originalData=?
       WHERE uuid=?;`;
     const results = await conn.query(sql, [
       JSON.stringify(attendee),
