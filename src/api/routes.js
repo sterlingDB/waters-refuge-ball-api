@@ -22,6 +22,9 @@ BigInt.prototype.toJSON = function() {
   return this.toString();
 };
 
+const freeCode = 'free2024';
+const cashCode = 'cash2024';
+
 async function generalSms(args) {
   if (!args.uuid) {
     return { error: 'uuid is required' };
@@ -369,8 +372,8 @@ router.post('/reserveHostess', async (req, res) => {
     const args = req.body;
     const uuid = uuidv4();
 
-    const isFree = args.specialCode === 'free2024' ? true : false;
-    const paidCash = args.specialCode === 'cash2024' ? true : false;
+    const isFree = args.specialCode === freeCode ? true : false;
+    const paidCash = args.specialCode === cashCode ? true : false;
     const isHostess = args.ticketOptions.includes('hostess') ? 1 : 0;
     const specialDinner = args.ticketOptions.includes('specialDinner') ? 1 : 0;
 
@@ -449,9 +452,9 @@ router.post('/reserveHostess', async (req, res) => {
 router.post('/reserveInvitee', async (req, res) => {
   try {
     const args = req.body;
-    const uuid = args.attendee.uuid
-    const isFree = args.specialCode === 'free2024' ? true : false;
-    const paidCash = args.specialCode === 'cash2024' ? true : false;
+    const uuid = args.attendee.uuid;
+    const isFree = args.specialCode === freeCode ? true : false;
+    const paidCash = args.specialCode === cashCode ? true : false;
     const specialDinner = args.ticketOptions.includes('specialDinner') ? 1 : 0;
 
     const conn = await mysql.createConnection(mysqlServer);
@@ -464,7 +467,7 @@ router.post('/reserveInvitee', async (req, res) => {
       specialDinner,
       paidCash,
       isFree,
-      ((paidCash || isFree) ? true: false),
+      paidCash || isFree ? true : false,
       uuid,
     ];
     const sql = `UPDATE eventAttendees 
@@ -472,21 +475,15 @@ router.post('/reserveInvitee', async (req, res) => {
       WHERE  uuid=?;`;
     const results = await conn.query(sql, updateArgs);
 
-
-
-    
     // const sqlTableNumberUpdate = `UPDATE eventTables
     // SET eventTables.hostessId=${hostessId}
     // WHERE eventTables.id=${tableResults[0][0].id};`;
     // const resultsUpdate = await conn.query(sqlTableNumberUpdate);
 
-    
-
-      if (isHostess) {
-        hostessEmail(uuid);
-        hostessSms(uuid);
-      }
-    
+    // if (isHostess) {
+    //   hostessEmail(uuid);
+    //   hostessSms(uuid);
+    // }
 
     conn.end();
 
@@ -509,14 +506,13 @@ router.post('/reserveInvitee', async (req, res) => {
   }
 });
 
-
 router.post('/inviteAttendee', async (req, res) => {
   try {
     const args = req.body;
     const newUuid = uuidv4();
     const conn = await mysql.createConnection(mysqlServer);
 
-    const hostess = await getAttendee(conn,args.uuid);
+    const hostess = await getAttendee(conn, args.uuid);
 
     const updateArgs = [
       args.name,
@@ -535,9 +531,7 @@ router.post('/inviteAttendee', async (req, res) => {
     conn.end();
 
     if (results[0].affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ success: 'good to go', newUuid});
+      return res.status(200).json({ success: 'good to go', newUuid });
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
@@ -554,7 +548,7 @@ router.post('/transferAttendee', async (req, res) => {
     const conn = await mysql.createConnection(mysqlServer);
 
     const attendee = await getAttendee(conn, args.uuid);
-    const originalData = [JSON.parse(attendee.originalData),attendee];
+    const originalData = [JSON.parse(attendee.originalData), attendee];
 
     const updateArgs = [
       args.name,
@@ -573,9 +567,7 @@ router.post('/transferAttendee', async (req, res) => {
     conn.end();
 
     if (results[0].affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ success: 'good to go', newUuid});
+      return res.status(200).json({ success: 'good to go', newUuid });
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
@@ -604,9 +596,7 @@ router.post('/removeAttendee', async (req, res) => {
     conn.end();
 
     if (results[0].affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ success: 'good to go', uuid: args.uuid});
+      return res.status(200).json({ success: 'good to go', uuid: args.uuid });
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
