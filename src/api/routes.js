@@ -215,6 +215,57 @@ async function hostessEmail(uuid) {
   }
 }
 
+async function inviteAttendeeEmail(uuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!uuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const attendee = await getAttendee(conn, uuid);
+
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee.email,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Special Invitation!',
+      templateId: 'd-32a8065be9484efda98412c347beba26',
+      dynamicTemplateData: {
+        name: attendee.name,
+        date: eventDateFormatted,
+        hostessName:attendee.hostessName,
+        uniqueUrl:`https://refugeball.com/register/${uuid}`,
+      },
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET invitation_email_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
+
+
+
+
 async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
   const results = await dbConn.query(sql);
@@ -224,9 +275,10 @@ async function getCosts(dbConn) {
 }
 
 async function getAttendee(dbConn, uuid) {
-  const sql = `SELECT eventAttendees.*, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
+  const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
-  LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid 
+  LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid
+  LEFT JOIN eventAttendees AS hostessData ON hostessData.eventDate = eventAttendees.eventDate AND  hostessData.tableNumber = eventAttendees.tableNumber AND hostessData.isHostess=1
   WHERE eventAttendees.uuid=?;`;
   const results = await dbConn.query(sql, [uuid]);
 
@@ -528,6 +580,8 @@ router.post('/inviteAttendee', async (req, res) => {
 
     const attendeeId = results[0].insertId;
 
+    await inviteAttendeeEmail(newUuid);
+
     conn.end();
 
     if (results[0].affectedRows > 0) {
@@ -563,6 +617,8 @@ router.post('/transferAttendee', async (req, res) => {
     const results = await conn.query(sql, updateArgs);
 
     const attendeeId = results[0].insertId;
+
+    await inviteAttendeeEmail(args.uuid);
 
     conn.end();
 
