@@ -769,9 +769,14 @@ router.post('/getAttendee', async (req, res) => {
   try {
     const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
-
     const attendee = await getAttendee(conn, args.uuid);
     conn.end();
+
+
+    // if the attendee his no longer valid
+    if( !attendee || attendee.deleted){
+      return res.status(200).json({error: 'Invitation no longer valid.'});
+    }
 
     attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
 
