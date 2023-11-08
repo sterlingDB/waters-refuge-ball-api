@@ -68,7 +68,7 @@ www.use('/confirm', async (req, res) => {
 www.use('/hostess', async (req, res) => {
   res.sendFile(__dirname + '/refuge-front/dist/index.html');
 });
-www.use('/refuge-front', api);
+www.use('/api', api);
 
 // admin app
 // const admin = express();
