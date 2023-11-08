@@ -54,19 +54,19 @@ const redirectController = (req, res, next) => {
 var www = express();
 const api = require('./refuge-front/routes');
 
-www.use(redirectController, express.static(path.join(__dirname, 'refuge-front/vue_dist_public')));
+www.use(redirectController, express.static(path.join(__dirname, 'refuge-front/dist')));
 
 www.use('/register', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
+  res.sendFile(__dirname + '/refuge-front/dist/index.html');
 });
 www.use('/payment', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
+  res.sendFile(__dirname + '/refuge-front/dist/index.html');
 });
 www.use('/confirm', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
+  res.sendFile(__dirname + '/refuge-front/dist/index.html');
 });
 www.use('/hostess', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
+  res.sendFile(__dirname + '/refuge-front/dist/index.html');
 });
 www.use('/refuge-front', api);
 
