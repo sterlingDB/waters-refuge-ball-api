@@ -52,49 +52,49 @@ const redirectController = (req, res, next) => {
 
 // www server app
 var www = express();
-const api = require('./api/routes');
+const api = require('./refuge-front/routes');
 
-www.use(redirectController, express.static(path.join(__dirname, 'public')));
+www.use(redirectController, express.static(path.join(__dirname, 'refuge-front/vue_dist_public')));
 
 www.use('/register', async (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
 });
 www.use('/payment', async (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
 });
 www.use('/confirm', async (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
 });
 www.use('/hostess', async (req, res) => {
-  res.sendFile(__dirname + '/public/index.html');
+  res.sendFile(__dirname + '/refuge-front/vue_dist_public/index.html');
 });
-www.use('/api', api);
+www.use('/refuge-front', api);
 
 // admin app
-const admin = express();
-const adminAuthApi = require('./admin-api/auth');
-const adminApi = require('./admin-api/routes');
+// const admin = express();
+// const adminAuthApi = require('./admin-api/auth');
+// const adminApi = require('./admin-api/routes');
 
-admin.use(express.static(path.join(__dirname, 'admin-front')));
-admin.use('/reservations', async (req, res) => {
-  res.sendFile(__dirname + '/admin-front/index.html');
-});
-admin.use('/waitlist', async (req, res) => {
-  res.sendFile(__dirname + '/admin-front/index.html');
-});
-admin.use('/openseats', async (req, res) => {
-  res.sendFile(__dirname + '/admin-front/index.html');
-});
-admin.use('/login', async (req, res) => {
-  res.sendFile(__dirname + '/admin-front/index.html');
-});
+// admin.use(express.static(path.join(__dirname, 'admin-front')));
+// admin.use('/reservations', async (req, res) => {
+//   res.sendFile(__dirname + '/admin-front/index.html');
+// });
+// admin.use('/waitlist', async (req, res) => {
+//   res.sendFile(__dirname + '/admin-front/index.html');
+// });
+// admin.use('/openseats', async (req, res) => {
+//   res.sendFile(__dirname + '/admin-front/index.html');
+// });
+// admin.use('/login', async (req, res) => {
+//   res.sendFile(__dirname + '/admin-front/index.html');
+// });
 
-admin.use('/admin-api', adminAuthApi);
-admin.use(
-  '/admin-api',
-  passport.authenticate('jwt', { session: false }),
-  adminApi
-);
+// admin.use('/admin-api', adminAuthApi);
+// admin.use(
+//   '/admin-api',
+//   passport.authenticate('jwt', { session: false }),
+//   adminApi
+// );
 
 // app
 const app = express();
@@ -121,7 +121,7 @@ app.use(bodyParser.json());
 // development cant use ssl, so all possible routes are maped to the main server
 if (process.env.NODE_ENV === 'development') {
   app.use(www);
-  app.use(admin);
+  // app.use(admin);
 
   // Starting both http & https servers
   const httpServer = http.createServer(app);
@@ -136,7 +136,7 @@ if (process.env.NODE_ENV === 'production') {
   // Vhost app
 
   app.use(vhost('www.refugeball.com', www));
-  app.use(vhost('admin.refugeball.com', admin));
+  //app.use(vhost('admin.refugeball.com', admin));
   app.use(vhost('refugeball.com', www));
 
   // Starting both http & https servers
@@ -146,7 +146,7 @@ if (process.env.NODE_ENV === 'production') {
     console.log(`HTTP Server running on port ${port}`);
   });
 
-  // walkthroughchristmas.com cert
+  // refugeball.com cert
   const privateKey = fs.readFileSync(
     '/etc/letsencrypt/live/refugeball.com/privkey.pem',
     'utf8'
@@ -166,29 +166,29 @@ if (process.env.NODE_ENV === 'production') {
     ca: ca,
   };
 
-  // *.walkthroughchristmas.com cert
-  const privateKey2 = fs.readFileSync(
-    '/etc/letsencrypt/live/refugeball.com/privkey.pem',
-    'utf8'
-  );
-  const certificate2 = fs.readFileSync(
-    '/etc/letsencrypt/live/refugeball.com/cert.pem',
-    'utf8'
-  );
-  const ca2 = fs.readFileSync(
-    '/etc/letsencrypt/live/refugeball.com/chain.pem',
-    'utf8'
-  );
+  // *.refugeball.com cert
+  // const privateKey2 = fs.readFileSync(
+  //   '/etc/letsencrypt/live/refugeball.com/privkey.pem',
+  //   'utf8'
+  // );
+  // const certificate2 = fs.readFileSync(
+  //   '/etc/letsencrypt/live/refugeball.com/cert.pem',
+  //   'utf8'
+  // );
+  // const ca2 = fs.readFileSync(
+  //   '/etc/letsencrypt/live/refugeball.com/chain.pem',
+  //   'utf8'
+  // );
 
-  const credentials2 = {
-    key: privateKey2,
-    cert: certificate2,
-    ca: ca2,
-  };
+  // const credentials2 = {
+  //   key: privateKey2,
+  //   cert: certificate2,
+  //   ca: ca2,
+  // };
 
   const httpsServer = https.createServer(credentials, app);
-  httpsServer.addContext('www.refugeball.com', credentials2);
-  httpsServer.addContext('admin.refugeball.com', credentials2);
+  // httpsServer.addContext('www.refugeball.com', credentials2);
+  // httpsServer.addContext('admin.refugeball.com', credentials2);
 
   httpsServer.listen(443, () => {
     console.log('HTTPS Server running on port 443');
