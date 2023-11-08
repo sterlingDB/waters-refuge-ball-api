@@ -25,109 +25,58 @@ BigInt.prototype.toJSON = function() {
 const freeCode = 'free2024';
 const cashCode = 'cash2024';
 
-async function generalSms(args) {
-  if (!args.uuid) {
-    return { error: 'uuid is required' };
-  }
-  const conn = await mysql.createConnection(mysqlServer);
+// async function generalSms(uuid) {
+//   if (!args.uuid) {
+//     return { error: 'uuid is required' };
+//   }
+//   const conn = await mysql.createConnection(mysqlServer);
 
-  try {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const client = require('twilio')(accountSid, authToken);
+//   try {
+//     const accountSid = process.env.TWILIO_ACCOUNT_SID;
+//     const authToken = process.env.TWILIO_AUTH_TOKEN;
+//     const client = require('twilio')(accountSid, authToken);
 
-    const uuid = args.uuid;
-    const sqlReservation = `SELECT * FROM reservations WHERE uuid=?;`;
-    const [[resultsReservation]] = await conn.query(sqlReservation, [uuid]);
+//     const uuid = args.uuid;
+//     const sqlReservation = `SELECT * FROM reservations WHERE uuid=?;`;
+//     const [[resultsReservation]] = await conn.query(sqlReservation, [uuid]);
 
-    const resDateTime = new Date(
-      format(resultsReservation.date_slot, 'yyyy-MM-dd') +
-        'T' +
-        resultsReservation.time_slot
-    );
+//     const resDateTime = new Date(
+//       format(resultsReservation.date_slot, 'yyyy-MM-dd') +
+//         'T' +
+//         resultsReservation.time_slot
+//     );
 
-    const body = `Walk Through Christmas Reservations!
-We have your ${resultsReservation.reserved_seats} spots reserved for ${format(
-      resDateTime,
-      'eeee MMMM do hh:mm aaa'
-    )}.
-Can't wait to see you here!`;
+//     const body = `Walk Through Christmas Reservations!
+// We have your ${resultsReservation.reserved_seats} spots reserved for ${format(
+//       resDateTime,
+//       'eeee MMMM do hh:mm aaa'
+//     )}.
+// Can't wait to see you here!`;
 
-    const foo = await client.messages
-      .create({
-        body: body,
-        from: '+13203453479',
-        to: resultsReservation.phone,
-      })
-      .then(async (message) => {
-        console.log('text sent');
+//     const foo = await client.messages
+//       .create({
+//         body: body,
+//         from: '+13203453479',
+//         to: resultsReservation.phone,
+//       })
+//       .then(async (message) => {
+//         console.log('text sent');
 
-        const sqlUpdate = `UPDATE reservations SET reservation_text_sent=1 WHERE uuid=?;`;
-        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+//         const sqlUpdate = `UPDATE reservations SET reservation_text_sent=1 WHERE uuid=?;`;
+//         const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
 
-        return message;
-      });
+//         return message;
+//       });
 
-    return { success: foo.sid };
-  } catch (err) {
-    console.error(err);
-    return { error: err };
-  } finally {
-    conn.end();
-  }
-}
-async function generalEmail(args) {
-  const conn = await mysql.createConnection(mysqlServer);
+//     return { success: foo.sid };
+//   } catch (err) {
+//     console.error(err);
+//     return { error: err };
+//   } finally {
+//     conn.end();
+//   }
+// }
 
-  try {
-    if (!args.uuid) {
-      return { error: 'reservation not found' };
-    }
-
-    const uuid = args.uuid;
-    const sqlReservation = `SELECT * FROM reservations WHERE uuid=?;`;
-    const [[resultsReservation]] = await conn.query(sqlReservation, [uuid]);
-
-    const resDateTime = new Date(
-      format(resultsReservation.date_slot, 'yyyy-MM-dd') +
-        'T' +
-        resultsReservation.time_slot
-    );
-
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    const msg = {
-      to: resultsReservation.email,
-      from: 'refuge@thewaterschurch.net',
-      subject: 'Refuge Ball Confirmation',
-      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
-      dynamicTemplateData: {
-        name: resultsReservation.name,
-        seats: resultsReservation.reserved_seats,
-        date: format(resDateTime, 'eeee MMMM do'),
-        time: format(resDateTime, 'hh:mm aaa'),
-      },
-    };
-    await sgMail
-      .send(msg)
-      .then(async (foo) => {
-        console.log('Email sent');
-
-        const sqlUpdate = `UPDATE reservations SET reservation_email_sent=1 WHERE uuid=?;`;
-        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
-      })
-      .catch((error) => {
-        console.error(error);
-        return { error };
-      });
-
-    return { success: 'good to go' };
-  } catch (err) {
-    console.error(err);
-    return { error: err };
-  } finally {
-    conn.end();
-  }
-}
 
 async function hostessSms(uuid) {
   if (!uuid) {
@@ -237,6 +186,8 @@ async function inviteAttendeeEmail(uuid) {
         name: attendee.name,
         date: eventDateFormatted,
         hostessName:attendee.hostessName,
+        hostessFirstName:attendee.hostessName.split(' ')[0],
+        hostessEmail:attendee.hostessEmail,
         uniqueUrl:`https://refugeball.com/register/${uuid}`,
       },
     };
@@ -262,9 +213,57 @@ async function inviteAttendeeEmail(uuid) {
   }
 }
 
+async function inviteeConfirmationEmail(uuid) {
+  const conn = await mysql.createConnection(mysqlServer);
 
+  try {
+    if (!uuid) {
+      return { error: 'reservation not found' };
+    }
 
+    const attendee = await getAttendee(conn, uuid);
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
 
+    let options = '';
+    if(attendee.specialDinner){
+      options += 'Special Dinner: Vegan and Gluten Free'
+    }
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee.email,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Registration Confirmation',
+      templateId: 'd-8303e70d62c8426ab1da2c5a57cf86fc',
+      dynamicTemplateData: {
+        name: attendee.name,
+        date: eventDateFormatted,
+        hostessName:attendee.hostessName,
+        hostessEmail:attendee.hostessEmail,
+        options: options
+      },
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
 
 async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
@@ -275,7 +274,7 @@ async function getCosts(dbConn) {
 }
 
 async function getAttendee(dbConn, uuid) {
-  const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
+  const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
   LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid
   LEFT JOIN eventAttendees AS hostessData ON hostessData.eventDate = eventAttendees.eventDate AND  hostessData.tableNumber = eventAttendees.tableNumber AND hostessData.isHostess=1
@@ -527,19 +526,11 @@ router.post('/reserveInvitee', async (req, res) => {
       WHERE  uuid=?;`;
     const results = await conn.query(sql, updateArgs);
 
-    // const sqlTableNumberUpdate = `UPDATE eventTables
-    // SET eventTables.hostessId=${hostessId}
-    // WHERE eventTables.id=${tableResults[0][0].id};`;
-    // const resultsUpdate = await conn.query(sqlTableNumberUpdate);
-
-    // if (isHostess) {
-    //   hostessEmail(uuid);
-    //   hostessSms(uuid);
-    // }
 
     conn.end();
 
     if (paidCash || isFree) {
+      inviteeConfirmationEmail(uuid);
       return res
         .status(200)
         .json({ success: 'good to go', uuid, continue: 'confirm' });
@@ -685,7 +676,6 @@ router.post('/getTableAttendees', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-// SELECT * FROM `waters_refuge_ball`.`eventAttendees` WHERE `eventDate` = '2024-04-12' AND `tableNumber` = '24' ORDER BY `created` DESC LIMIT 0,1000
 
 router.post('/payment', async (req, res) => {
   try {
@@ -787,33 +777,6 @@ router.post('/getAttendee', async (req, res) => {
   }
 });
 
-// router.get('/dates', async (req, res) => {
-//   try {
-//     //       WHERE timeslots.showAfter <= DATE_SUB(NOW(), INTERVAL 5 HOUR)
 
-//     const conn = await mysql.createConnection(mysqlServer);
-//     const sql = `SELECT eventTables.*, COUNT(attendees.id) AS seatsFilled, (eventTables.seats - COUNT(attendees.id)) AS openSeats, if(attendees.isHostess, 1, 0) AS hasHostess, if(attendees.isHostess, attendees.name, '') AS hostessName
-//     FROM eventTables
-//     LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
-//     GROUP BY eventTables.id;`;
-//     const [results] = await conn.query(sql);
-//     conn.end();
-
-//     const returnData = results.map((x) => {
-//       return {
-//         eventDate: format(x.eventDate, 'yyyy-MM-dd'),
-//         tableNumber: x.tableNumber,
-//         openSeats: x.openSeats,
-//         hasHostess: x.hasHostess,
-//         hostessName: x.hostessName,
-//       };
-//     });
-
-//     return res.status(200).json(returnData);
-//   } catch (err) {
-//     console.error(err);
-//     return res.status(400).json(err);
-//   }
-// });
 
 module.exports = router;
