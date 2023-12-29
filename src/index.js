@@ -109,6 +109,7 @@ app.use(
 app.use(bodyParser.json());
 
 // certbot use
+// in the terminal run: certbot certonly --manual -d refugeball.com
 app.use(
   '/.well-known/acme-challenge/n-DamVeGgKnm0Nuewnb_D7f9Eg5GqMFLzGGHZ7RPvyE',
   (req, res) => {
