@@ -109,14 +109,14 @@ app.use(
 app.use(bodyParser.json());
 
 // certbot use
-// app.use(
-//   '/.well-known/acme-challenge/mx3xBKeBOAsJ22a5r7BA7n2CG0AuYoU2x9-e1kggOQg',
-//   (req, res) => {
-//     res.send(
-//       'mx3xBKeBOAsJ22a5r7BA7n2CG0AuYoU2x9-e1kggOQg.52TkN6iN311BK18BHHox28yZwvqYPuANVE06tfxlasc'
-//     );
-//   }
-// );
+app.use(
+  '/.well-known/acme-challenge/n-DamVeGgKnm0Nuewnb_D7f9Eg5GqMFLzGGHZ7RPvyE',
+  (req, res) => {
+    res.send(
+      'n-DamVeGgKnm0Nuewnb_D7f9Eg5GqMFLzGGHZ7RPvyE.jnueKkvexSOuTtRFitgKYrV5VV6YQfpJbnF07scx_ZI'
+    );
+  }
+);
 
 // development cant use ssl, so all possible routes are maped to the main server
 if (process.env.NODE_ENV === 'development') {
