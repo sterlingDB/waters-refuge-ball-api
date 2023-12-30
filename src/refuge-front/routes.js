@@ -94,7 +94,10 @@ async function hostessSms(uuid) {
 
     const body = `Your a Refuge Ball 2024 table hostess!
 We have your hostess spots reserved for ${eventDateFormatted}.
-More info will follow!`;
+More info will follow!
+
+https://refugeball.com/hostess/${attendee.uuid}
+`;
 
     const foo = await client.messages
       .create({
