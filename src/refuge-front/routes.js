@@ -361,24 +361,32 @@ router.get('/getCosts', async (req, res) => {
 });
 
 router.post('/cancel', async (req, res) => {
-  try {
-    const args = req.body;
-    const sqlA = `UPDATE eventAttendees
-    LEFT JOIN eventTables ON eventAttendees.id = eventTables.hostessId
-    SET eventTables.hostessId = null
-    WHERE eventAttendees.uuid=?;`;
-    const sqlB = `DELETE FROM eventAttendees WHERE uuid=?;`;
-    const conn = await mysql.createConnection(mysqlServer);
-    const resultsA = await conn.query(sqlA, [args.uuid]);
-    const resultsB = await conn.query(sqlB, [args.uuid]);
+  const args = req.body;
+  const conn = await mysql.createConnection(mysqlServer);
+  const attendee = await getAttendee(conn, args.uuid);
 
-    conn.end();
-
+  if(attendee.invitation_email_sent==='0'){
+    try {
+      const sqlA = `UPDATE eventAttendees
+      LEFT JOIN eventTables ON eventAttendees.id = eventTables.hostessId
+      SET eventTables.hostessId = null
+      WHERE eventAttendees.uuid=?;`;
+      const sqlB = `DELETE FROM eventAttendees WHERE uuid=?;`;
+      const resultsA = await conn.query(sqlA, [args.uuid]);
+      const resultsB = await conn.query(sqlB, [args.uuid]);
+  
+      conn.end();
+  
+      return res.status(200).json('canceled');
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json(err);
+    }
+  }else{
     return res.status(200).json('canceled');
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
   }
+  
+  
 });
 
 router.get('/availableForHosting', async (req, res) => {
