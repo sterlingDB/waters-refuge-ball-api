@@ -96,6 +96,7 @@ async function hostessSms(uuid) {
 We have your hostess spots reserved for ${eventDateFormatted}.
 More info will follow!
 
+Here is your Hostess Dashboard, Don't share it!
 https://refugeball.com/hostess/${attendee.uuid}
 `;
 
