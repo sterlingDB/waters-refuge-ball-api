@@ -14,7 +14,13 @@
       "restart": true,
       "protocol": "inspector"
     },
-    
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Node:Hostess Dashboard Email",
+      "program": "${workspaceFolder}/src/confirmations/emails.js",
+      "restart": true
+    },
     {
       "type": "node",
       "request": "launch",
