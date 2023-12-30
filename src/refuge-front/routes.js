@@ -140,6 +140,7 @@ async function hostessEmail(uuid) {
       dynamicTemplateData: {
         name: attendee.name,
         date: eventDateFormatted,
+        dashboardUrl:`https://refugeball.com/hostess/${attendee.uuid}`
       },
     };
     await sgMail
