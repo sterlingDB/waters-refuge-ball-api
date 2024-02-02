@@ -123,6 +123,9 @@ https://refugeball.com/hostess/${attendee.uuid}
     conn.end();
   }
 }
+
+
+
 async function hostessEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -184,6 +187,7 @@ async function inviteAttendeeEmail(uuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
+      cc: attendee.hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Special Invitation!',
       templateId: 'd-32a8065be9484efda98412c347beba26',
@@ -201,7 +205,7 @@ async function inviteAttendeeEmail(uuid) {
       .then(async (foo) => {
         console.log('Email sent');
 
-        const sqlUpdate = `UPDATE eventAttendees SET invitation_email_sent=1 WHERE uuid=?;`;
+        const sqlUpdate = `UPDATE eventAttendees SET inviteEmailDate=NOW() WHERE uuid=?;`;
         const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
       })
       .catch((error) => {
@@ -210,6 +214,51 @@ async function inviteAttendeeEmail(uuid) {
       });
 
     return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
+async function inviteAttendeeSms(uuid) {
+  if (!uuid) {
+    return { error: 'uuid is required' };
+  }
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const client = require('twilio')(accountSid, authToken);
+
+    const attendee = await getAttendee(conn, uuid);
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+    const body = `${attendee.hostessName} has invited you to attend the Refuge Ball!
+
+Here is your unique link to complete registration.
+
+https://refugeball.com/register/${uuid}
+`;
+
+    const foo = await client.messages
+      .create({
+        body: body,
+        from: '+13203453479',
+        to: attendee.phone,
+      })
+      .then(async (message) => {
+        console.log('text sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET inviteSmsDate=NOW() WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+
+        return message;
+      });
+
+    return { success: foo.sid };
   } catch (err) {
     console.error(err);
     return { error: err };
@@ -311,6 +360,31 @@ router.get('/hostessEmail', async (req, res) => {
     const textResponce = await hostessSms(req.query.uuid);
 
     return res.status(200).json({ textResponce, emailResponce });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/sendAnotherEmail', async (req, res) => {
+  try {
+    
+    const emailResponce = await inviteAttendeeEmail(req.body.uuid);
+    //console.log(req.body.uuid)
+
+    return res.status(200).json({ emailResponce });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/sendAnotherText', async (req, res) => {
+  try {
+    const textResponce = await inviteAttendeeSms(req.body.uuid);
+    //console.log(req.body.uuid)
+
+    return res.status(200).json({ textResponce });
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
