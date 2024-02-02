@@ -757,6 +757,19 @@ router.post('/getTableAttendees', async (req, res) => {
     ]);
     conn.end();
 
+    tableResults[0].forEach((attendee)=>{
+      attendee.extra={hasPaid:'no', isHostess:'no'}
+
+      if(attendee.hasPaid){
+        attendee.extra.hasPaid='yes'
+      }
+      if(attendee.isHostess){
+        attendee.extra.isHostess='yes'
+      }
+      // debugger
+
+    })
+
     return res.status(200).json(tableResults[0]);
   } catch (err) {
     console.error(err);
