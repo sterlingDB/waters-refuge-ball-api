@@ -391,6 +391,31 @@ router.post('/sendAnotherText', async (req, res) => {
   }
 });
 
+
+
+router.post('/updateHostessNotes', async (req, res) => {
+  try {
+
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+    const sqlTableNumber = `UPDATE eventAttendees SET notes =? WHERE uuid=?;`;
+    const resultsUpdate = await conn.query(sqlTableNumber, [args.notes,args.uuid]);
+    conn.end();
+
+    if (resultsUpdate[0].affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ success: 'notes updated'});
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
 router.get('/status', async (req, res) => {
   try {
     const conn = await mysql.createConnection(mysqlServer);
