@@ -515,6 +515,37 @@ router.get('/availableForHosting', async (req, res) => {
   }
 });
 
+router.post('/generalDatesForTicketCount', async (req, res) => {
+  try {
+    const args = req.body;
+
+    const conn = await mysql.createConnection(mysqlServer);
+    const sql = `SELECT DISTINCT eventDate FROM (SELECT eventTables.*, COUNT(eventAttendees.id) AS attendeeCount, (eventTables.seats-COUNT(eventAttendees.id)) AS seatsAvailable
+    FROM waters_refuge_ball.eventTables
+    LEFT JOIN eventAttendees ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
+    GROUP BY eventTables.id) AS foo
+    WHERE foo.seatsAvailable >= ?;`;
+    const [results] = await conn.query(sql, [args.count]);
+    conn.end();
+
+    const returnData = results.map((x) => {
+      return {
+        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
+        tableAvailable: x.tablesAvailable,
+      };
+    });
+
+    return res.status(200).json(returnData);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+
+
+
 router.post('/calculateTotalPrice', async (req, res) => {
   try {
     const args = req.body;
