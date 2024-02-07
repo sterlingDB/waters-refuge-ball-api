@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: 'walk through christmas registration API - Node',
+      name: 'RefugeBall API & FrontEnd GUI - Node/Express',
       script: 'npm',
-      args: 'run server:start',
+      args: 'run start',
       env: {
         NODE_ENV: 'production',
       }
