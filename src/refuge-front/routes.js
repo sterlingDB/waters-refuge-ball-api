@@ -643,6 +643,90 @@ router.post('/reserveHostess', async (req, res) => {
   }
 });
 
+router.post('/reserveGeneral', async (req, res) => {
+  try {
+    const args = req.body;
+    const uuid = uuidv4();
+
+    const isFree = args.specialCode === freeCode ? true : false;
+    const paidCash = args.specialCode === cashCode ? true : false;
+    const isHostess = args.ticketOptions.includes('hostess') ? 1 : 0;
+    const specialDinner = args.ticketOptions.includes('specialDinner') ? 1 : 0;
+
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
+    FROM eventTables
+    WHERE eventTables.eventDate=?
+    AND eventTables.hostessId IS NULL
+    ORDER BY RAND()
+    LIMIT 0,1;`;
+
+    const tableResults = await conn.query(sqlTableNumber, [args.eventDate]);
+    const updateArgs = [
+      args.name,
+      args.phone,
+      args.email,
+      args.eventDate,
+      args.specialCode,
+      tableResults[0][0].tableNumber,
+      uuid,
+      isHostess,
+      specialDinner,
+    ];
+    const sql = `INSERT INTO eventAttendees 
+      SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
+    const results = await conn.query(sql, updateArgs);
+
+    const hostessId = results[0].insertId;
+
+    const sqlTableNumberUpdate = `UPDATE eventTables
+    SET eventTables.hostessId=${hostessId}
+    WHERE eventTables.id=${tableResults[0][0].id};`;
+    const resultsUpdate = await conn.query(sqlTableNumberUpdate);
+
+    if (paidCash || isFree) {
+      if (paidCash) {
+        const updateRegistration = await conn.query(`UPDATE eventAttendees
+        SET hasPaid=1, paidCash=1
+        WHERE uuid="${uuid}";`);
+      }
+
+      if (isFree) {
+        const updateRegistration = await conn.query(`UPDATE eventAttendees
+        SET hasPaid=1, isFree=1
+        WHERE uuid="${uuid}";`);
+      }
+
+      if (isHostess) {
+        hostessEmail(uuid);
+        hostessSms(uuid);
+      }
+    }
+
+    conn.end();
+
+    if (paidCash || isFree) {
+      return res
+        .status(200)
+        .json({ success: 'good to go', uuid, continue: 'confirm' });
+    }
+
+    if (results[0].affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ success: 'good to go', uuid, continue: 'payment' });
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+
 router.post('/reserveInvitee', async (req, res) => {
   try {
     const args = req.body;
