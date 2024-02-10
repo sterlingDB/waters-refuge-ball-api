@@ -643,6 +643,72 @@ router.post('/reserveHostess', async (req, res) => {
   }
 });
 
+
+
+
+router.post('/reserveGeneralHold', async (req,res) => {
+  
+  const args = req.body;
+  const conn = await mysql.createConnection(mysqlServer);
+
+  const sqlTableNumber = `SELECT * FROM (SELECT eventTables.*, COUNT(eventAttendees.id) AS attendeeCount, (eventTables.seats-COUNT(eventAttendees.id)) AS seatsAvailable
+  FROM waters_refuge_ball.eventTables
+  LEFT JOIN eventAttendees ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
+  GROUP BY eventTables.id) AS availableTables
+  WHERE availableTables.seatsAvailable > ?
+  AND eventDate = ?
+  ORDER BY seatsAvailable ASC
+  LIMIT 0,1;`;
+ 
+  const tableResults = await conn.query(sqlTableNumber, [args.ticketCount, args.eventDate]);
+  
+  const masterAttendeeUuid = uuidv4();
+  const returnUuids = [masterAttendeeUuid]
+
+
+  for(let count = 1; count <= +args.ticketCount; count++){
+      console.log(count)
+
+        const thisUuid = uuidv4()
+        if(count!= 1){returnUuids.push(thisUuid)}
+
+        const dbArgs = [
+          args.eventDate,
+          tableResults[0][0].tableNumber,
+          count===1 ? masterAttendeeUuid : thisUuid,
+          masterAttendeeUuid
+        ];
+        const sql = `INSERT INTO eventAttendees 
+            SET eventDate=?, tableNumber=?, uuid=?, masterAttendeeUuid=?, created=NOW();`;
+        const results = await conn.query(sql, dbArgs);
+
+  }
+
+
+
+  await conn.end();
+
+  return returnUuids
+
+  // const updateArgs = [
+  //   args.name,
+  //   args.phone,
+  //   args.email,
+  //   args.eventDate,
+  //   args.specialCode,
+  //   tableResults[0][0].tableNumber,
+  //   uuid,
+  //   isHostess,
+  //   specialDinner,
+  // ];
+  // const sql = `INSERT INTO eventAttendees 
+  //   SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
+  // const results = await conn.query(sql, updateArgs);
+
+  // const hostessId = results[0].insertId;
+ 
+
+})
 router.post('/reserveGeneral', async (req, res) => {
   try {
     const args = req.body;
@@ -704,16 +770,6 @@ router.post('/reserveGeneral', async (req, res) => {
   }
 });
 
-// temp dev route,  because I left the real one on my home computer!
-router.post('/reserveGeneralHold', async (req, res) => {
- 
-    const args = req.body;
-    const uuid = uuidv4();
-
-    const returnFoo = [uuidv4(), uuidv4(), uuidv4()]
-    return res.status(200).json(returnFoo);
-
-});
 
 router.post('/reserveInvitee', async (req, res) => {
   try {
