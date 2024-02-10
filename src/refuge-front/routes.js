@@ -646,78 +646,57 @@ router.post('/reserveHostess', async (req, res) => {
 router.post('/reserveGeneral', async (req, res) => {
   try {
     const args = req.body;
-    const uuid = uuidv4();
 
+    const mainUuid = args.registrationData.uuid
     const isFree = args.specialCode === freeCode ? true : false;
     const paidCash = args.specialCode === cashCode ? true : false;
-    const isHostess = args.ticketOptions.includes('hostess') ? 1 : 0;
-    const specialDinner = args.ticketOptions.includes('specialDinner') ? 1 : 0;
-
     const conn = await mysql.createConnection(mysqlServer);
 
-    const sqlTableNumber = `SELECT eventTables.id, eventTables.eventDate, eventTables.tableNumber
-    FROM eventTables
-    WHERE eventTables.eventDate=?
-    AND eventTables.hostessId IS NULL
-    ORDER BY RAND()
-    LIMIT 0,1;`;
+// loop for each registration
+    const groupArray = [args.registrationData, args.registrationData2, args.registrationData3]
+    const resultsArray = []
+    let successCount = 0;
 
-    const tableResults = await conn.query(sqlTableNumber, [args.eventDate]);
+  for (const x of groupArray) {
     const updateArgs = [
-      args.name,
-      args.phone,
-      args.email,
+      x.name,
+      x.phone,
+      x.email,
       args.eventDate,
       args.specialCode,
-      tableResults[0][0].tableNumber,
-      uuid,
-      isHostess,
-      specialDinner,
+      x.options.includes('specialDinner') ? 1 : 0,
+      paidCash,
+      isFree,
+      (paidCash || isFree),
+      x.uuid,
     ];
-    const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
-    const results = await conn.query(sql, updateArgs);
-
-    const hostessId = results[0].insertId;
-
-    const sqlTableNumberUpdate = `UPDATE eventTables
-    SET eventTables.hostessId=${hostessId}
-    WHERE eventTables.id=${tableResults[0][0].id};`;
-    const resultsUpdate = await conn.query(sqlTableNumberUpdate);
-
-    if (paidCash || isFree) {
-      if (paidCash) {
-        const updateRegistration = await conn.query(`UPDATE eventAttendees
-        SET hasPaid=1, paidCash=1
-        WHERE uuid="${uuid}";`);
-      }
-
-      if (isFree) {
-        const updateRegistration = await conn.query(`UPDATE eventAttendees
-        SET hasPaid=1, isFree=1
-        WHERE uuid="${uuid}";`);
-      }
-
-      if (isHostess) {
-        hostessEmail(uuid);
-        hostessSms(uuid);
-      }
-    }
-
-    conn.end();
+      
+    const sql = `UPDATE eventAttendees 
+        SET name=?, phone=?, email=?, eventDate=?, specialCode=?, specialDinner=?, 
+        paidCash=?, isFree=?, hasPaid=?, modified=NOW()
+      WHERE  uuid=?;`;
+    const results = await conn.query(sql, updateArgs)
+    resultsArray.push(results[0].affectedRows);
+    successCount +=results[0].affectedRows
+}
+    if(conn) conn.end();
 
     if (paidCash || isFree) {
       return res
         .status(200)
-        .json({ success: 'good to go', uuid, continue: 'confirm' });
+        .json({ success: 'good to go', mainUuid, continue: 'confirm' });
     }
 
-    if (results[0].affectedRows > 0) {
+    if (successCount === +args.ticketCount) {
       return res
         .status(200)
-        .json({ success: 'good to go', uuid, continue: 'payment' });
+        .json({ success: 'good to go', mainUuid, continue: 'payment' });
     } else {
-      return res.status(400).json({ error: 'no clue' });
+      //return res.status(400).json({ error: 'no clue' });
+      return res
+      .status(200)
+      .json({ success: 'good to go', mainUuid, continue: 'payment' });
+
     }
   } catch (err) {
     console.error(err);
@@ -725,7 +704,16 @@ router.post('/reserveGeneral', async (req, res) => {
   }
 });
 
+// temp dev route,  because I left the real one on my home computer!
+router.post('/reserveGeneralHold', async (req, res) => {
+ 
+    const args = req.body;
+    const uuid = uuidv4();
 
+    const returnFoo = [uuidv4(), uuidv4(), uuidv4()]
+    return res.status(200).json(returnFoo);
+
+});
 
 router.post('/reserveInvitee', async (req, res) => {
   try {
