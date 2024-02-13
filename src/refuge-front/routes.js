@@ -332,10 +332,23 @@ async function getAttendee(dbConn, uuid) {
   FROM eventAttendees 
   LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid
   LEFT JOIN eventAttendees AS hostessData ON hostessData.eventDate = eventAttendees.eventDate AND  hostessData.tableNumber = eventAttendees.tableNumber AND hostessData.isHostess=1
-  WHERE eventAttendees.uuid=?;`;
+  WHERE eventAttendees.uuid=?
+  AND eventAttendees.deleted IS NULL;;`;
   const results = await dbConn.query(sql, [uuid]);
 
   const data = results[0][0];
+  return data;
+}
+async function getAttendeesByMasterId(dbConn, masterUuid) {
+  const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
+  FROM eventAttendees 
+  LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid
+  LEFT JOIN eventAttendees AS hostessData ON hostessData.eventDate = eventAttendees.eventDate AND  hostessData.tableNumber = eventAttendees.tableNumber AND hostessData.isHostess=1
+  WHERE eventAttendees.masterAttendeeUuid=?
+  AND eventAttendees.deleted IS NULL;`;
+  const results = await dbConn.query(sql, [masterUuid]);
+
+  const data = results[0];
   return data;
 }
 
@@ -688,27 +701,36 @@ router.post('/reserveGeneralHold', async (req,res) => {
 
   await conn.end();
 
-  return returnUuids
+  return res.status(200).json(returnUuids);
 
-  // const updateArgs = [
-  //   args.name,
-  //   args.phone,
-  //   args.email,
-  //   args.eventDate,
-  //   args.specialCode,
-  //   tableResults[0][0].tableNumber,
-  //   uuid,
-  //   isHostess,
-  //   specialDinner,
-  // ];
-  // const sql = `INSERT INTO eventAttendees 
-  //   SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
-  // const results = await conn.query(sql, updateArgs);
 
-  // const hostessId = results[0].insertId;
- 
 
 })
+
+router.post('/reserveGeneralFetch', async (req,res) => {
+  
+  const args = req.body;
+  const masterAttendeeUuid = args.masterUuid;
+
+  const conn = await mysql.createConnection(mysqlServer);
+
+  const sqlAttendees = `SELECT uuid FROM eventAttendees
+  WHERE masterAttendeeUuid = ?
+  ORDER BY id ASC;`;
+ 
+  const attendeeResults = await conn.query(sqlAttendees, [masterAttendeeUuid]);
+  
+  const returnUuids = []
+  attendeeResults[0].forEach(x=>{
+    returnUuids.push(x.uuid)
+  })
+
+  await conn.end();
+
+  return res.status(200).json(returnUuids);
+
+})
+
 router.post('/reserveGeneral', async (req, res) => {
   try {
     const args = req.body;
@@ -1046,7 +1068,6 @@ router.post('/getAttendee', async (req, res) => {
     const attendee = await getAttendee(conn, args.uuid);
     conn.end();
 
-
     // if the attendee his no longer valid
     if( !attendee || attendee.deleted){
       return res.status(200).json({error: 'Invitation no longer valid.'});
@@ -1061,6 +1082,57 @@ router.post('/getAttendee', async (req, res) => {
   }
 });
 
+router.post('/getAllAttendeeByMaster', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+
+    let allAttendees = await getAttendeesByMasterId(conn, args.masterAttendeeUuid)
+    if(allAttendees.length === 0){
+      const singleAttendee = await getAttendee(conn, args.masterAttendeeUuid);
+      if(singleAttendee) {
+        allAttendees.push(singleAttendee)
+      }
+    }
+    conn.end();
+
+
+    // if the attendee is no longer valid
+    if( allAttendees.length === 0){
+      return res.status(200).json({error: 'No data found'});
+    }
+
+    allAttendees.forEach(x=>{
+      x.eventDate = format(x.eventDate, 'yyyy-MM-dd');
+    })
+
+    return res.status(200).json(allAttendees);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/getMasterReservation', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+    const attendee = await getAttendee(conn, args.uuid);
+    conn.end();
+
+    // if the attendee his no longer valid
+    if( !attendee || attendee.deleted){
+      return res.status(200).json({error: 'Invitation no longer valid.'});
+    }
+
+    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
+
+    return res.status(200).json(attendee);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
 
 
 module.exports = router;
