@@ -786,12 +786,13 @@ router.post('/reserveGeneral', async (req, res) => {
       paidCash,
       isFree,
       (paidCash || isFree),
+      x.notes, 
       x.uuid,
     ];
       
     const sql = `UPDATE eventAttendees 
         SET name=?, phone=?, email=?, eventDate=?, specialCode=?, specialDinner=?, 
-        paidCash=?, isFree=?, hasPaid=?, modified=NOW()
+        paidCash=?, isFree=?, hasPaid=?, notes=?, modified=NOW()
       WHERE  uuid=?;`;
     const results = await conn.query(sql, updateArgs)
     resultsArray.push(results[0].affectedRows);
