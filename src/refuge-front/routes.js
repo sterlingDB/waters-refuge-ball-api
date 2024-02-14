@@ -353,16 +353,46 @@ async function getAttendeesByMasterId(dbConn, masterUuid) {
 }
 
 async function calculateTotalPrice(dbConn, uuid) {
+
+  if(!uuid){
+    return  "error" ;
+  }
+
   const costs = await getCosts(dbConn);
   const attendee = await getAttendee(dbConn, uuid);
+  let chargeAmount = 0
+  let allAttendees = []
 
-  let chargeAmount = costs.general;
-  if (attendee.isHostess) {
-    chargeAmount = costs.hostess;
+  if(attendee?.masterAttendeeUuid){
+    allAttendees = await getAttendeesByMasterId(dbConn, attendee.masterAttendeeUuid)
   }
-  if (attendee.specialDinner) {
-    chargeAmount += costs.specialDinner;
+
+
+  if(allAttendees.length>0){
+    allAttendees.forEach(x => {
+      if (!x.isHostess) {
+        chargeAmount += costs.general;
+      }
+      if (x.isHostess) {
+        chargeAmount += costs.hostess;
+      }
+      if (x.specialDinner) {
+        chargeAmount += costs.specialDinner;
+      }
+    })
+  }else{
+   chargeAmount = costs.general;
+    if (attendee.isHostess) {
+      chargeAmount = costs.hostess;
+    }
+    if (attendee.specialDinner) {
+      chargeAmount += costs.specialDinner;
+    }
+
   }
+
+
+
 
   return { charge: chargeAmount * 100, display: chargeAmount };
 }
@@ -859,7 +889,7 @@ router.post('/inviteAttendee', async (req, res) => {
       newUuid,
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, created=NOW();`;
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, wasInvited=1, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
     const attendeeId = results[0].insertId;
