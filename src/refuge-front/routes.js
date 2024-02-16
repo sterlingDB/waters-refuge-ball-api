@@ -397,6 +397,43 @@ async function calculateTotalPrice(dbConn, uuid) {
   return { charge: chargeAmount * 100, display: chargeAmount };
 }
 
+
+
+async function autoDeletes(dbConn){
+
+  // general deletes
+  const sql = `DELETE
+  FROM waters_refuge_ball.eventAttendees 
+  WHERE eventAttendees.hasPaid=0
+  AND eventAttendees.isHostess=0
+  AND eventAttendees.wasInvited=0
+  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW();
+  
+  UPDATE waters_refuge_ball.eventTables 
+  LEFT JOIN eventAttendees ON eventTables.hostessId=eventAttendees.id
+  SET eventTables.hostessId = NULL
+  WHERE eventTables.hostessId IS NOT NULL
+  AND eventAttendees.hasPaid=0
+  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW();
+
+  DELETE FROM  waters_refuge_ball.eventAttendees
+  WHERE eventAttendees.id IN (SELECT eventAttendees.id
+  FROM waters_refuge_ball.eventAttendees 
+  LEFT JOIN eventTables ON eventTables.hostessId=eventAttendees.id
+  WHERE eventAttendees.hasPaid=0
+  AND eventAttendees.isHostess=1
+  AND eventTables.id IS NULL
+  AND (eventAttendees.created + INTERVAL 1 MINUTE) < NOW());`;
+
+  const results = await dbConn.query(sql, [uuid]);
+
+  const data = results;
+  return data;
+
+}
+
+
+
 router.get('/hostessEmail', async (req, res) => {
   try {
     const emailResponce = await hostessEmail(req.query.uuid);
@@ -628,6 +665,7 @@ router.post('/reserveHostess', async (req, res) => {
       args.name,
       args.phone,
       args.email,
+      args.notes,
       args.eventDate,
       args.specialCode,
       tableResults[0][0].tableNumber,
@@ -636,7 +674,7 @@ router.post('/reserveHostess', async (req, res) => {
       specialDinner,
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
+      SET name=?, phone=?, email=?, notes=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
     const hostessId = results[0].insertId;
