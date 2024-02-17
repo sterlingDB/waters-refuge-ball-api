@@ -1042,10 +1042,15 @@ router.post('/getTableAttendees', async (req, res) => {
 
     const conn = await mysql.createConnection(mysqlServer);
 
-    const sqlTableAttendees = `SELECT * FROM eventAttendees 
-      WHERE eventDate = ? 
-      AND tableNumber = ? 
-      ORDER BY isHostess DESC, name ASC;`;
+    const sqlTableAttendees = `SELECT 
+    eventAttendees.*,
+    IF(master.id IS NOT NULL, JSON_OBJECT( 'name', master.name, 'phone', master.phone, 'email', master.email), null)  as masterObject
+    FROM eventAttendees 
+    LEFT JOIN eventAttendees AS master ON eventAttendees.masterAttendeeUuid = master.masterAttendeeUuid
+    WHERE eventAttendees.eventDate = ? 
+    AND eventAttendees.tableNumber = ?
+    GROUP BY eventAttendees.id
+    ORDER BY eventAttendees.isHostess DESC, eventAttendees.name ASC;`;
 
     const tableResults = await conn.query(sqlTableAttendees, [
       args.eventDate,
@@ -1062,7 +1067,10 @@ router.post('/getTableAttendees', async (req, res) => {
       if(attendee.isHostess){
         attendee.extra.isHostess='yes'
       }
-      // debugger
+      if(attendee.masterObject){
+        attendee.masterObject = JSON.parse(attendee.masterObject)
+      }
+      //debugger
 
     })
 
