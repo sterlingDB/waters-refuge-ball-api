@@ -402,20 +402,22 @@ async function calculateTotalPrice(dbConn, uuid) {
 async function autoDeletes(dbConn){
 
   // general deletes
-  const sql = `DELETE
+  const sqlA = `DELETE
   FROM waters_refuge_ball.eventAttendees 
   WHERE eventAttendees.hasPaid=0
   AND eventAttendees.isHostess=0
   AND eventAttendees.wasInvited=0
-  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW();
-  
+  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW();`;
+
+  const sqlB = `
   UPDATE waters_refuge_ball.eventTables 
   LEFT JOIN eventAttendees ON eventTables.hostessId=eventAttendees.id
   SET eventTables.hostessId = NULL
   WHERE eventTables.hostessId IS NOT NULL
   AND eventAttendees.hasPaid=0
-  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW();
+  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW();`;
 
+  const sqlC = `
   DELETE FROM  waters_refuge_ball.eventAttendees
   WHERE eventAttendees.id IN (SELECT eventAttendees.id
   FROM waters_refuge_ball.eventAttendees 
@@ -423,16 +425,28 @@ async function autoDeletes(dbConn){
   WHERE eventAttendees.hasPaid=0
   AND eventAttendees.isHostess=1
   AND eventTables.id IS NULL
-  AND (eventAttendees.created + INTERVAL 1 MINUTE) < NOW());`;
+  AND (eventAttendees.created + INTERVAL 15 MINUTE) < NOW());`;
 
-  const results = await dbConn.query(sql, [uuid]);
+  const resultsA = await dbConn.query(sqlA);
+  const resultsB = await dbConn.query(sqlB);
+  const resultsC = await dbConn.query(sqlC);
 
-  const data = results;
-  return data;
+  return [resultsA,resultsB,resultsC];
 
 }
 
+router.get('/autoCleanup', async (req, res) => {
+  try {
+    const conn = await mysql.createConnection(mysqlServer);
+    const results = await autoDeletes(conn);
+    conn.end();
 
+    return res.status(200).json(results);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
 
 router.get('/hostessEmail', async (req, res) => {
   try {
@@ -849,10 +863,10 @@ router.post('/reserveGeneral', async (req, res) => {
         .status(200)
         .json({ success: 'good to go', mainUuid, continue: 'payment' });
     } else {
-      //return res.status(400).json({ error: 'no clue' });
-      return res
-      .status(200)
-      .json({ success: 'good to go', mainUuid, continue: 'payment' });
+      return res.status(400).json({ error: 'No hold found' });
+      // return res
+      // .status(200)
+      // .json({ success: 'good to go', mainUuid, continue: 'payment' });
 
     }
   } catch (err) {
