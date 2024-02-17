@@ -514,7 +514,7 @@ router.get('/status', async (req, res) => {
   try {
     const conn = await mysql.createConnection(mysqlServer);
 
-    let status = 'closed';
+    let status = [];
     const now = new Date();
 
     const sql = `SELECT * FROM system_status WHERE id=1;`;
@@ -527,10 +527,17 @@ router.get('/status', async (req, res) => {
     const generalCloseDateTime = new Date(results.generalCloseDateTime);
 
     if (now >= generalOpenDateTime && now <= generalCloseDateTime) {
-      status = 'general';
+      status.push('general');
     }
-    if (now >= hostessOpenDateTime && now <= hostessCloseDateTime) {
-      status = 'hostess';
+    if (now >= hostessOpenDateTime) {
+      status.push('hostess');
+    }
+    if (now <= hostessCloseDateTime) {
+      status.push('hostessInvites');
+    }
+
+    if(status.length <= 0){
+      status.push('closed')
     }
 
     return res.status(200).json({ status });
