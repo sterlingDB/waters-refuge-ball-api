@@ -522,7 +522,7 @@ router.get('/status', async (req, res) => {
     conn.end();
 
     const hostessOpenDateTime = new Date(results.hostessOpenDateTime);
-    const hostessCloseDateTime = new Date(results.hostessCloseDateTime);
+    const hostessInviteCloseDateTime = new Date(results.hostessInviteCloseDateTime);
     const generalOpenDateTime = new Date(results.generalOpenDateTime);
     const generalCloseDateTime = new Date(results.generalCloseDateTime);
 
@@ -532,7 +532,7 @@ router.get('/status', async (req, res) => {
     if (now >= hostessOpenDateTime) {
       status.push('hostess');
     }
-    if (now <= hostessCloseDateTime) {
+    if (now <= hostessInviteCloseDateTime) {
       status.push('hostessInvites');
     }
 
