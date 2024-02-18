@@ -509,6 +509,44 @@ router.post('/updateHostessNotes', async (req, res) => {
   }
 });
 
+router.post('/updateGroupReservation', async (req, res) => {
+  try {
+
+    const {groupData} = req.body
+
+    if(groupData.length > 0){
+      const conn = await mysql.createConnection(mysqlServer);
+
+      const sqlGroupDataUpdate = `UPDATE eventAttendees SET name=?, email=?, phone=?, notes=? WHERE uuid=?;`;
+      const updateResults = []
+       for await(const x of groupData){
+        const individualResults = await conn.query(sqlGroupDataUpdate, [x.name, x.email, x.phone, x.notes, x.uuid ]);
+        updateResults.push(individualResults[0].info)
+      }
+      conn.end();
+  
+      if (updateResults.length > 0) {
+        return res
+          .status(200)
+          .json({ success: updateResults});
+      } else {
+        return res.status(400).json({ error: 'no clue' });
+      }
+
+    }else{
+      return res.status(400).json({ error: 'no data' });
+
+    }
+
+
+   
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
 
 router.get('/status', async (req, res) => {
   try {
