@@ -426,13 +426,73 @@ async function generalAttendeeSms(masterUuid) {
   }
 }
 
+
+async function generalAttendeeNotifyHostessEmail(masterUuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!masterUuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const attendee = await getAttendeesByMasterId(conn, masterUuid);
+
+    const eventDateFormatted = format(attendee[0].eventDate, 'eeee MMMM do');
+
+    const emailData = {
+      hostessName: attendee[0].hostessName,
+      hostessEmail: attendee[0].hostessEmail,
+      name: attendee[0].name,
+      email: attendee[0].email,
+      phone: attendee[0].phone,
+      date: eventDateFormatted,
+    }
+    
+    if(attendee.length >= 2){
+      emailData.attendee2 = attendee[1].name;
+    }
+    if(attendee.length >= 3){
+      emailData.attendee3 = attendee[2].name;
+    }
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: 'jmorris@sterling-databases.com',
+     // to: attendee[0].hostessEmail,
+      //cc: attendee.hostessEmail,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball: Hostess Alert: Attendees assigned to your table',
+      templateId: 'd-546ffc139d884996bfc142b102645286',
+      dynamicTemplateData: emailData,
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent: Hostess Alert: Attendees assigned to your table');
+
+        // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        // const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
 // test route to activate an email or sms function
-// router.get('/test/:uuid', async (req, res) => {
-//   const {uuid} = req.params
-//   await generalAttendeeSms(uuid);
-//   await generalAttendeeEmail(uuid);
-//   return res.status(200).json({ uuid });
-// });
+router.get('/test/:uuid', async (req, res) => {
+  const {uuid} = req.params
+  await generalAttendeeEmail(uuid);
+  return res.status(200).json({ uuid });
+});
 
 
 /*  
