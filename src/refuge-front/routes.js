@@ -172,6 +172,7 @@ async function hostessEmail(uuid) {
   }
 }
 
+// Refuge Ball Registration: Attendee Invite
 async function inviteAttendeeEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -267,6 +268,7 @@ https://refugeball.com/register/${uuid}
   }
 }
 
+// Refuge Ball Registration: General Attendee Confirmation
 async function inviteeConfirmationEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -318,6 +320,159 @@ async function inviteeConfirmationEmail(uuid) {
     conn.end();
   }
 }
+
+
+
+
+async function generalAttendeeEmail(masterUuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!masterUuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const attendee = await getAttendeesByMasterId(conn, masterUuid);
+
+    const eventDateFormatted = format(attendee[0].eventDate, 'eeee MMMM do');
+
+    const emailData = {
+      hostessName: attendee[0].hostessName,
+      hostessEmail: attendee[0].hostessEmail,
+      name: attendee[0].name,
+      email: attendee[0].email,
+      phone: attendee[0].phone,
+      specialDinner: attendee[0].specialDinner,
+      date: eventDateFormatted,
+      uniqueUrl:`https://refugeball.com/group/manage/${masterUuid}`,
+    }
+    
+    if(attendee.length >= 2){
+      emailData.attendee2 = attendee[1].name;
+      emailData.specialDinner2 = attendee[1].specialDinner
+
+    }
+    if(attendee.length >= 3){
+      emailData.attendee3 = attendee[2].name;
+      emailData.specialDinner3 = attendee[2].specialDinner
+    }
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee[0].email,
+      //cc: attendee.hostessEmail,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Registration!',
+      templateId: 'd-4af898133b5f4d9abf294a3b72e0fc88',
+      dynamicTemplateData: emailData,
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+async function generalAttendeeSms(masterUuid) {
+  if (!masterUuid) {
+    return { error: 'masterUuid is required' };
+  }
+  const conn = await mysql.createConnection(mysqlServer);
+
+  
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const client = require('twilio')(accountSid, authToken);
+
+    const attendee = await getAttendeesByMasterId(conn, masterUuid);
+
+    const eventDateFormatted = format(attendee[0].eventDate, 'eeee MMMM do');
+
+    const attendeeBody = []
+    let pushData = [`Attendee:\r   ${attendee[0].name}`]
+    if(attendee[0].specialDinner){
+      pushData.push('Special Dinner')
+    }
+    attendeeBody.push(pushData.join(': '))
+
+    if(attendee.length >= 2){
+       pushData = [`Attendee 2:\r   ${attendee[1].name}`]
+      if(attendee[1].specialDinner){
+        pushData.push('Special Dinner')
+      }
+      attendeeBody.push(pushData.join(': '))
+    }
+    if(attendee.length >= 3){
+       pushData = [`Attendee 3:\r   ${attendee[2].name}`]
+      if(attendee[2].specialDinner){
+        pushData.push('Special Dinner')
+      }
+      attendeeBody.push(pushData.join(': '))
+    }
+
+
+    const body = `Your going to the Refuge Ball!
+    ${eventDateFormatted}
+
+    ${attendeeBody.join('\r')}
+
+    Here is your unique link to update your registration if needed.
+    https://refugeball.com/group/manage/${masterUuid}`;
+
+    const foo = await client.messages
+      .create({
+        body: body,
+        from: '+13203453479',
+        to: attendee[0].phone,
+      })
+      .then(async (message) => {
+        console.log('text sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET confirmation_text_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
+
+        return message;
+      });
+
+    return { success: foo.sid };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
+async function sendGeneralRegConfirmation(masterUuid){
+  await generalAttendeeEmail(masterUuid);
+  await generalAttendeeSms(masterUuid);
+}
+
+
+// router.get('/generalEmail/:masterUuid', async (req, res) => {
+
+//   const {masterUuid} = req.params
+//   await sendGeneralRegConfirmation(masterUuid)
+
+//   return res.status(200).json({ masterUuid });
+
+// });
+
 
 async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
@@ -867,43 +1022,47 @@ router.post('/reserveGeneral', async (req, res) => {
     const paidCash = args.specialCode === cashCode ? true : false;
     const conn = await mysql.createConnection(mysqlServer);
 
-// loop for each registration
     const groupArray = [args.registrationData, args.registrationData2, args.registrationData3]
     const resultsArray = []
     let successCount = 0;
 
-  for (const x of groupArray) {
-    const updateArgs = [
-      x.name,
-      x.phone,
-      x.email,
-      args.eventDate,
-      args.specialCode,
-      x.options.includes('specialDinner') ? 1 : 0,
-      paidCash,
-      isFree,
-      (paidCash || isFree),
-      x.notes, 
-      x.uuid,
-    ];
-      
-    const sql = `UPDATE eventAttendees 
-        SET name=?, phone=?, email=?, eventDate=?, specialCode=?, specialDinner=?, 
-        paidCash=?, isFree=?, hasPaid=?, notes=?, modified=NOW()
-      WHERE  uuid=?;`;
-    const results = await conn.query(sql, updateArgs)
-    resultsArray.push(results[0].affectedRows);
-    successCount +=results[0].affectedRows
-}
+    // loop for each registration
+    for (const x of groupArray) {
+      const updateArgs = [
+        x.name,
+        x.phone,
+        x.email,
+        args.eventDate,
+        args.specialCode,
+        x.options.includes('specialDinner') ? 1 : 0,
+        paidCash,
+        isFree,
+        (paidCash || isFree),
+        x.notes, 
+        x.uuid,
+      ];
+        
+      const sql = `UPDATE eventAttendees 
+          SET name=?, phone=?, email=?, eventDate=?, specialCode=?, specialDinner=?, 
+          paidCash=?, isFree=?, hasPaid=?, notes=?, modified=NOW()
+        WHERE  uuid=?;`;
+      const results = await conn.query(sql, updateArgs)
+      resultsArray.push(results[0].affectedRows);
+      successCount +=results[0].affectedRows
+    }
     if(conn) conn.end();
 
     if (paidCash || isFree) {
+
+      await sendGeneralRegConfirmation(mainUuid);
+
       return res
         .status(200)
         .json({ success: 'good to go', mainUuid, continue: 'confirm' });
     }
 
     if (successCount === +args.ticketCount) {
+      await sendGeneralRegConfirmation(mainUuid);
       return res
         .status(200)
         .json({ success: 'good to go', mainUuid, continue: 'payment' });
