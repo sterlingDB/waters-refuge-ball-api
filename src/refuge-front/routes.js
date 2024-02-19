@@ -25,59 +25,64 @@ BigInt.prototype.toJSON = function() {
 const freeCode = 'free2024';
 const cashCode = 'cash2024';
 
-// async function generalSms(uuid) {
-//   if (!args.uuid) {
-//     return { error: 'uuid is required' };
-//   }
-//   const conn = await mysql.createConnection(mysqlServer);
 
-//   try {
-//     const accountSid = process.env.TWILIO_ACCOUNT_SID;
-//     const authToken = process.env.TWILIO_AUTH_TOKEN;
-//     const client = require('twilio')(accountSid, authToken);
-
-//     const uuid = args.uuid;
-//     const sqlReservation = `SELECT * FROM reservations WHERE uuid=?;`;
-//     const [[resultsReservation]] = await conn.query(sqlReservation, [uuid]);
-
-//     const resDateTime = new Date(
-//       format(resultsReservation.date_slot, 'yyyy-MM-dd') +
-//         'T' +
-//         resultsReservation.time_slot
-//     );
-
-//     const body = `Walk Through Christmas Reservations!
-// We have your ${resultsReservation.reserved_seats} spots reserved for ${format(
-//       resDateTime,
-//       'eeee MMMM do hh:mm aaa'
-//     )}.
-// Can't wait to see you here!`;
-
-//     const foo = await client.messages
-//       .create({
-//         body: body,
-//         from: '+13203453479',
-//         to: resultsReservation.phone,
-//       })
-//       .then(async (message) => {
-//         console.log('text sent');
-
-//         const sqlUpdate = `UPDATE reservations SET reservation_text_sent=1 WHERE uuid=?;`;
-//         const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
-
-//         return message;
-//       });
-
-//     return { success: foo.sid };
-//   } catch (err) {
-//     console.error(err);
-//     return { error: err };
-//   } finally {
-//     conn.end();
-//   }
-// }
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Email and SMS functions - Start
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
 
 
+    /*
+          Hostess signup confirmation Email & SMS
+            Refuge Ball Registration: Confirmation: Hostess
+                d-0aeac20b7eae429ca69c3f2563828d90
+    */
+async function hostessEmail(uuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!uuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const attendee = await getAttendee(conn, uuid);
+
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee.email,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball Confirmation',
+      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
+      dynamicTemplateData: {
+        name: attendee.name,
+        date: eventDateFormatted,
+        dashboardUrl:`https://refugeball.com/hostess/${attendee.uuid}`
+      },
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
 async function hostessSms(uuid) {
   if (!uuid) {
     return { error: 'uuid is required' };
@@ -125,54 +130,11 @@ https://refugeball.com/hostess/${attendee.uuid}
 }
 
 
-
-async function hostessEmail(uuid) {
-  const conn = await mysql.createConnection(mysqlServer);
-
-  try {
-    if (!uuid) {
-      return { error: 'reservation not found' };
-    }
-
-    const attendee = await getAttendee(conn, uuid);
-
-    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
-
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    const msg = {
-      to: attendee.email,
-      from: 'refuge@thewaterschurch.net',
-      subject: 'Refuge Ball Confirmation',
-      templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
-      dynamicTemplateData: {
-        name: attendee.name,
-        date: eventDateFormatted,
-        dashboardUrl:`https://refugeball.com/hostess/${attendee.uuid}`
-      },
-    };
-    await sgMail
-      .send(msg)
-      .then(async (foo) => {
-        console.log('Email sent');
-
-        const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
-        const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
-      })
-      .catch((error) => {
-        console.error(error);
-        return { error };
-      });
-
-    return { success: 'good to go' };
-  } catch (err) {
-    console.error(err);
-    return { error: err };
-  } finally {
-    conn.end();
-  }
-}
-
-// Refuge Ball Registration: Attendee Invite
+    /*
+          Hostess Invites an attendee to the table: special invite: Email & SMS
+            Refuge Ball Registration: Invitation: Hostess to Attendee
+                d-32a8065be9484efda98412c347beba26
+    */
 async function inviteAttendeeEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -222,7 +184,6 @@ async function inviteAttendeeEmail(uuid) {
     conn.end();
   }
 }
-
 async function inviteAttendeeSms(uuid) {
   if (!uuid) {
     return { error: 'uuid is required' };
@@ -268,7 +229,11 @@ https://refugeball.com/register/${uuid}
   }
 }
 
-// Refuge Ball Registration: General Attendee Confirmation
+    /*
+          Invited Attendee Registration: confirmation Email & SMS
+            Refuge Ball Registration: Confirmation: Invited Attendee
+                d-8303e70d62c8426ab1da2c5a57cf86fc
+    */
 async function inviteeConfirmationEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -322,8 +287,11 @@ async function inviteeConfirmationEmail(uuid) {
 }
 
 
-
-
+    /*
+          General Registration: confirmation Email & SMS
+            Refuge Ball Registration: Confirmation: General
+                d-4af898133b5f4d9abf294a3b72e0fc88
+    */
 async function generalAttendeeEmail(masterUuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -458,22 +426,29 @@ async function generalAttendeeSms(masterUuid) {
   }
 }
 
-async function sendGeneralRegConfirmation(masterUuid){
-  await generalAttendeeEmail(masterUuid);
-  await generalAttendeeSms(masterUuid);
-}
-
-
-// router.get('/generalEmail/:masterUuid', async (req, res) => {
-
-//   const {masterUuid} = req.params
-//   await sendGeneralRegConfirmation(masterUuid)
-
-//   return res.status(200).json({ masterUuid });
-
+// test route to activate an email or sms function
+// router.get('/test/:uuid', async (req, res) => {
+//   const {uuid} = req.params
+//   await generalAttendeeSms(uuid);
+//   await generalAttendeeEmail(uuid);
+//   return res.status(200).json({ uuid });
 // });
 
 
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Email and SMS functions - End
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
+
+
+
+
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Functions: shared within routes
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
 async function getCosts(dbConn) {
   const sql = `SELECT * FROM eventCosts WHERE id=1;`;
   const results = await dbConn.query(sql);
@@ -481,7 +456,6 @@ async function getCosts(dbConn) {
   const costs = results[0][0];
   return costs;
 }
-
 async function getAttendee(dbConn, uuid) {
   const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
@@ -506,7 +480,6 @@ async function getAttendeesByMasterId(dbConn, masterUuid) {
   const data = results[0];
   return data;
 }
-
 async function calculateTotalPrice(dbConn, uuid) {
 
   if(!uuid){
@@ -551,9 +524,6 @@ async function calculateTotalPrice(dbConn, uuid) {
 
   return { charge: chargeAmount * 100, display: chargeAmount };
 }
-
-
-
 async function autoDeletes(dbConn){
 
   // general deletes
@@ -590,6 +560,15 @@ async function autoDeletes(dbConn){
 
 }
 
+
+
+
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes: autorun cleanup
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
+
 router.get('/autoCleanup', async (req, res) => {
   try {
     const conn = await mysql.createConnection(mysqlServer);
@@ -603,6 +582,12 @@ router.get('/autoCleanup', async (req, res) => {
   }
 });
 
+
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes that send email & sms
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
 router.get('/hostessEmail', async (req, res) => {
   try {
     const emailResponce = await hostessEmail(req.query.uuid);
@@ -642,219 +627,11 @@ router.post('/sendAnotherText', async (req, res) => {
 
 
 
-router.post('/updateHostessNotes', async (req, res) => {
-  try {
-
-    const args = req.body;
-    const conn = await mysql.createConnection(mysqlServer);
-    const sqlTableNumber = `UPDATE eventAttendees SET notes =? WHERE uuid=?;`;
-    const resultsUpdate = await conn.query(sqlTableNumber, [args.notes,args.uuid]);
-    conn.end();
-
-    if (resultsUpdate[0].affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ success: 'notes updated'});
-    } else {
-      return res.status(400).json({ error: 'no clue' });
-    }
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/updateGroupReservation', async (req, res) => {
-  try {
-
-    const {groupData} = req.body
-
-    if(groupData.length > 0){
-      const conn = await mysql.createConnection(mysqlServer);
-
-      const sqlGroupDataUpdate = `UPDATE eventAttendees SET name=?, email=?, phone=?, notes=? WHERE uuid=?;`;
-      const updateResults = []
-       for await(const x of groupData){
-        const individualResults = await conn.query(sqlGroupDataUpdate, [x.name, x.email, x.phone, x.notes, x.uuid ]);
-        updateResults.push(individualResults[0].info)
-      }
-      conn.end();
-  
-      if (updateResults.length > 0) {
-        return res
-          .status(200)
-          .json({ success: updateResults});
-      } else {
-        return res.status(400).json({ error: 'no clue' });
-      }
-
-    }else{
-      return res.status(400).json({ error: 'no data' });
-
-    }
-
-
-   
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-
-
-router.get('/status', async (req, res) => {
-  try {
-    const conn = await mysql.createConnection(mysqlServer);
-
-    let status = [];
-    const now = new Date();
-
-    const sql = `SELECT * FROM system_status WHERE id=1;`;
-    const [[results]] = await conn.query(sql);
-    conn.end();
-
-    const hostessOpenDateTime = new Date(results.hostessOpenDateTime);
-    const hostessInviteCloseDateTime = new Date(results.hostessInviteCloseDateTime);
-    const generalOpenDateTime = new Date(results.generalOpenDateTime);
-    const generalCloseDateTime = new Date(results.generalCloseDateTime);
-
-    if (now >= generalOpenDateTime && now <= generalCloseDateTime) {
-      status.push('general');
-    }
-    if (now >= hostessOpenDateTime) {
-      status.push('hostess');
-    }
-    if (now <= hostessInviteCloseDateTime) {
-      status.push('hostessInvites');
-    }
-
-    if(status.length <= 0){
-      status.push('closed')
-    }
-
-    return res.status(200).json({ status });
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.get('/getCosts', async (req, res) => {
-  try {
-    const conn = await mysql.createConnection(mysqlServer);
-    const costs = await getCosts(conn);
-    conn.end();
-
-    return res.status(200).json(costs);
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/cancel', async (req, res) => {
-  const args = req.body;
-  const conn = await mysql.createConnection(mysqlServer);
-  const attendee = await getAttendee(conn, args.uuid);
-
-  if(attendee.invitation_email_sent==='0'){
-    try {
-      const sqlA = `UPDATE eventAttendees
-      LEFT JOIN eventTables ON eventAttendees.id = eventTables.hostessId
-      SET eventTables.hostessId = null
-      WHERE eventAttendees.uuid=?;`;
-      const sqlB = `DELETE FROM eventAttendees WHERE uuid=?;`;
-      const resultsA = await conn.query(sqlA, [args.uuid]);
-      const resultsB = await conn.query(sqlB, [args.uuid]);
-  
-      conn.end();
-  
-      return res.status(200).json('canceled');
-    } catch (err) {
-      console.error(err);
-      return res.status(400).json(err);
-    }
-  }else{
-    return res.status(200).json('canceled');
-  }
-  
-  
-});
-
-router.get('/availableForHosting', async (req, res) => {
-  try {
-    const conn = await mysql.createConnection(mysqlServer);
-    const sql = `SELECT tableData.eventDate, COUNT(*) AS tablesAvailable
-    FROM (SELECT eventTables.eventDate, if(attendees.isHostess, 1, 0) AS hasHostess
-    FROM eventTables
-    LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
-    GROUP BY eventTables.id) AS tableData
-    WHERE tableData.hasHostess = 0
-    GROUP BY tableData.eventDate`;
-    const [results] = await conn.query(sql);
-    conn.end();
-
-    const returnData = results.map((x) => {
-      return {
-        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
-        tableAvailable: x.tablesAvailable,
-      };
-    });
-
-    return res.status(200).json(returnData);
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-router.post('/generalDatesForTicketCount', async (req, res) => {
-  try {
-    const args = req.body;
-
-    const conn = await mysql.createConnection(mysqlServer);
-    const sql = `SELECT DISTINCT eventDate FROM (SELECT eventTables.*, COUNT(eventAttendees.id) AS attendeeCount, (eventTables.seats-COUNT(eventAttendees.id)) AS seatsAvailable
-    FROM waters_refuge_ball.eventTables
-    LEFT JOIN eventAttendees ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
-    GROUP BY eventTables.id) AS foo
-    WHERE foo.seatsAvailable >= ?;`;
-    const [results] = await conn.query(sql, [args.count]);
-    conn.end();
-
-    const returnData = results.map((x) => {
-      return {
-        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
-        tableAvailable: x.tablesAvailable,
-      };
-    });
-
-    return res.status(200).json(returnData);
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
-
-
-
-
-router.post('/calculateTotalPrice', async (req, res) => {
-  try {
-    const args = req.body;
-    const conn = await mysql.createConnection(mysqlServer);
-
-    const chargeAmount = await calculateTotalPrice(conn, args.uuid);
-    conn.end();
-
-    return res.status(200).json(chargeAmount);
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json(err);
-  }
-});
-
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes: create reservations
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
 router.post('/reserveHostess', async (req, res) => {
   try {
     const args = req.body;
@@ -937,9 +714,6 @@ router.post('/reserveHostess', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
-
-
 
 router.post('/reserveGeneralHold', async (req,res) => {
   
@@ -1054,7 +828,8 @@ router.post('/reserveGeneral', async (req, res) => {
 
     if (paidCash || isFree) {
 
-      await sendGeneralRegConfirmation(mainUuid);
+      await generalAttendeeSms(mainUuid);
+      await generalAttendeeEmail(mainUuid);
 
       return res
         .status(200)
@@ -1062,7 +837,8 @@ router.post('/reserveGeneral', async (req, res) => {
     }
 
     if (successCount === +args.ticketCount) {
-      await sendGeneralRegConfirmation(mainUuid);
+      await generalAttendeeSms(mainUuid);
+      await generalAttendeeEmail(mainUuid);
       return res
         .status(200)
         .json({ success: 'good to go', mainUuid, continue: 'payment' });
@@ -1078,7 +854,6 @@ router.post('/reserveGeneral', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
 
 router.post('/reserveInvitee', async (req, res) => {
   try {
@@ -1129,6 +904,11 @@ router.post('/reserveInvitee', async (req, res) => {
   }
 });
 
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes: Hostess dashboard
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
 router.post('/inviteAttendee', async (req, res) => {
   try {
     const args = req.body;
@@ -1227,6 +1007,172 @@ router.post('/removeAttendee', async (req, res) => {
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes: loading?
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
+router.post('/getAttendee', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+    const attendee = await getAttendee(conn, args.uuid);
+    conn.end();
+
+    // if the attendee his no longer valid
+    if( !attendee || attendee.deleted){
+      return res.status(200).json({error: 'Invitation no longer valid.'});
+    }
+
+    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
+
+    return res.status(200).json(attendee);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/getAllAttendeeByMaster', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+
+    let allAttendees = await getAttendeesByMasterId(conn, args.masterAttendeeUuid)
+    if(allAttendees.length === 0){
+      const singleAttendee = await getAttendee(conn, args.masterAttendeeUuid);
+      if(singleAttendee) {
+        allAttendees.push(singleAttendee)
+      }
+    }
+    conn.end();
+
+
+    // if the attendee is no longer valid
+    if( allAttendees.length === 0){
+      return res.status(200).json({error: 'No data found'});
+    }
+
+    allAttendees.forEach(x=>{
+      x.eventDate = format(x.eventDate, 'yyyy-MM-dd');
+    })
+
+    return res.status(200).json(allAttendees);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/getMasterReservation', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+    const attendee = await getAttendee(conn, args.uuid);
+    conn.end();
+
+    // if the attendee his no longer valid
+    if( !attendee || attendee.deleted){
+      return res.status(200).json({error: 'Invitation no longer valid.'});
+    }
+
+    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
+
+    return res.status(200).json(attendee);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes: mutations
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
+
+router.post('/updateHostessNotes', async (req, res) => {
+  try {
+
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+    const sqlTableNumber = `UPDATE eventAttendees SET notes =? WHERE uuid=?;`;
+    const resultsUpdate = await conn.query(sqlTableNumber, [args.notes,args.uuid]);
+    conn.end();
+
+    if (resultsUpdate[0].affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ success: 'notes updated'});
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.post('/updateGroupReservation', async (req, res) => {
+  try {
+
+    const {groupData} = req.body
+
+    if(groupData.length > 0){
+      const conn = await mysql.createConnection(mysqlServer);
+
+      const sqlGroupDataUpdate = `UPDATE eventAttendees SET name=?, email=?, phone=?, notes=? WHERE uuid=?;`;
+      const updateResults = []
+       for await(const x of groupData){
+        const individualResults = await conn.query(sqlGroupDataUpdate, [x.name, x.email, x.phone, x.notes, x.uuid ]);
+        updateResults.push(individualResults[0].info)
+      }
+      conn.end();
+  
+      if (updateResults.length > 0) {
+        return res
+          .status(200)
+          .json({ success: updateResults});
+      } else {
+        return res.status(400).json({ error: 'no clue' });
+      }
+
+    }else{
+      return res.status(400).json({ error: 'no data' });
+
+    }
+
+
+   
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+/*  
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+      Routes: other
+  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+*/
+
+router.post('/calculateTotalPrice', async (req, res) => {
+  try {
+    const args = req.body;
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const chargeAmount = await calculateTotalPrice(conn, args.uuid);
+    conn.end();
+
+    return res.status(200).json(chargeAmount);
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
@@ -1356,73 +1302,133 @@ router.post('/payment', async (req, res) => {
   }
 });
 
-router.post('/getAttendee', async (req, res) => {
+router.get('/status', async (req, res) => {
   try {
-    const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
-    const attendee = await getAttendee(conn, args.uuid);
+
+    let status = [];
+    const now = new Date();
+
+    const sql = `SELECT * FROM system_status WHERE id=1;`;
+    const [[results]] = await conn.query(sql);
     conn.end();
 
-    // if the attendee his no longer valid
-    if( !attendee || attendee.deleted){
-      return res.status(200).json({error: 'Invitation no longer valid.'});
+    const hostessOpenDateTime = new Date(results.hostessOpenDateTime);
+    const hostessInviteCloseDateTime = new Date(results.hostessInviteCloseDateTime);
+    const generalOpenDateTime = new Date(results.generalOpenDateTime);
+    const generalCloseDateTime = new Date(results.generalCloseDateTime);
+
+    if (now >= generalOpenDateTime && now <= generalCloseDateTime) {
+      status.push('general');
+    }
+    if (now >= hostessOpenDateTime) {
+      status.push('hostess');
+    }
+    if (now <= hostessInviteCloseDateTime) {
+      status.push('hostessInvites');
     }
 
-    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
+    if(status.length <= 0){
+      status.push('closed')
+    }
 
-    return res.status(200).json(attendee);
+    return res.status(200).json({ status });
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
   }
 });
 
-router.post('/getAllAttendeeByMaster', async (req, res) => {
+router.get('/getCosts', async (req, res) => {
   try {
-    const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
-
-    let allAttendees = await getAttendeesByMasterId(conn, args.masterAttendeeUuid)
-    if(allAttendees.length === 0){
-      const singleAttendee = await getAttendee(conn, args.masterAttendeeUuid);
-      if(singleAttendee) {
-        allAttendees.push(singleAttendee)
-      }
-    }
+    const costs = await getCosts(conn);
     conn.end();
 
-
-    // if the attendee is no longer valid
-    if( allAttendees.length === 0){
-      return res.status(200).json({error: 'No data found'});
-    }
-
-    allAttendees.forEach(x=>{
-      x.eventDate = format(x.eventDate, 'yyyy-MM-dd');
-    })
-
-    return res.status(200).json(allAttendees);
+    return res.status(200).json(costs);
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
   }
 });
 
-router.post('/getMasterReservation', async (req, res) => {
+router.post('/cancel', async (req, res) => {
+  const args = req.body;
+  const conn = await mysql.createConnection(mysqlServer);
+  const attendee = await getAttendee(conn, args.uuid);
+
+  if(attendee.invitation_email_sent==='0'){
+    try {
+      const sqlA = `UPDATE eventAttendees
+      LEFT JOIN eventTables ON eventAttendees.id = eventTables.hostessId
+      SET eventTables.hostessId = null
+      WHERE eventAttendees.uuid=?;`;
+      const sqlB = `DELETE FROM eventAttendees WHERE uuid=?;`;
+      const resultsA = await conn.query(sqlA, [args.uuid]);
+      const resultsB = await conn.query(sqlB, [args.uuid]);
+  
+      conn.end();
+  
+      return res.status(200).json('canceled');
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json(err);
+    }
+  }else{
+    return res.status(200).json('canceled');
+  }
+  
+  
+});
+
+router.get('/availableForHosting', async (req, res) => {
   try {
-    const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
-    const attendee = await getAttendee(conn, args.uuid);
+    const sql = `SELECT tableData.eventDate, COUNT(*) AS tablesAvailable
+    FROM (SELECT eventTables.eventDate, if(attendees.isHostess, 1, 0) AS hasHostess
+    FROM eventTables
+    LEFT JOIN eventAttendees AS attendees ON eventTables.eventDate = attendees.eventDate AND eventTables.tableNumber = attendees.tableNumber
+    GROUP BY eventTables.id) AS tableData
+    WHERE tableData.hasHostess = 0
+    GROUP BY tableData.eventDate`;
+    const [results] = await conn.query(sql);
     conn.end();
 
-    // if the attendee his no longer valid
-    if( !attendee || attendee.deleted){
-      return res.status(200).json({error: 'Invitation no longer valid.'});
-    }
+    const returnData = results.map((x) => {
+      return {
+        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
+        tableAvailable: x.tablesAvailable,
+      };
+    });
 
-    attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
+    return res.status(200).json(returnData);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
 
-    return res.status(200).json(attendee);
+router.post('/generalDatesForTicketCount', async (req, res) => {
+  try {
+    const args = req.body;
+
+    const conn = await mysql.createConnection(mysqlServer);
+    const sql = `SELECT DISTINCT eventDate FROM (SELECT eventTables.*, COUNT(eventAttendees.id) AS attendeeCount, (eventTables.seats-COUNT(eventAttendees.id)) AS seatsAvailable
+    FROM waters_refuge_ball.eventTables
+    LEFT JOIN eventAttendees ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
+    GROUP BY eventTables.id) AS foo
+    WHERE foo.seatsAvailable >= ?;`;
+    const [results] = await conn.query(sql, [args.count]);
+    conn.end();
+
+    const returnData = results.map((x) => {
+      return {
+        eventDate: format(x.eventDate, 'yyyy-MM-dd'),
+        tableAvailable: x.tablesAvailable,
+      };
+    });
+
+    return res.status(200).json(returnData);
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
