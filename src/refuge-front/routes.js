@@ -426,7 +426,11 @@ async function generalAttendeeSms(masterUuid) {
   }
 }
 
-
+    /*
+          General Registration: Notify Hostess
+            Refuge Ball Registration: Notice: Hostess: Assigned Attendee
+                d-546ffc139d884996bfc142b102645286
+    */
 async function generalAttendeeNotifyHostessEmail(masterUuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -487,10 +491,152 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
   }
 }
 
+
+    /*
+          Day Before: Reminder & Info: General
+            Refuge Ball Registration: Pre-Event: 1 Day Before: Attendees
+                d-b3fdaf10714d49ed84415abe2ed5671b
+    */
+async function reminderEmailGeneral(masterUuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!masterUuid) {
+      return { error: 'reservation not found' };
+    }
+
+    let attendee = await getAttendeesByMasterId(conn, masterUuid);
+    if(attendee.length === 0){
+       attendee = [await getAttendee(conn, masterUuid)];
+    }
+    const eventDateFormatted = format(attendee[0].eventDate, 'eeee MMMM do');
+
+    const emailData = {
+      date: eventDateFormatted,
+      hostessName: attendee[0].hostessName,
+      hostessEmail: attendee[0].hostessEmail,
+      nightOfTableNumber: attendee[0].nightOfTableNumber,
+      name: attendee[0].name,
+      email: attendee[0].email,
+      phone: attendee[0].phone,
+      attendee2: null,
+      attendee3: null
+    }
+    
+    if(attendee.length >= 2){
+      emailData.attendee2 = attendee[1].name;                
+    }
+    if(attendee.length >= 3){
+      emailData.attendee3 = attendee[2].name;
+    }
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee[0].email,
+      //cc: attendee.hostessEmail,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball: Tomorrow Night!',
+      templateId: 'd-b3fdaf10714d49ed84415abe2ed5671b',
+      dynamicTemplateData: emailData,
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        // const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+                
+
+    /*
+          2 Days Before: Reminder & Info: Hostess
+            Refuge Ball Registration: Pre-Event: 2 Day Before: Hostess
+                d-c282e00932ed49f99ad75fc386c862a2
+    */
+async function reminderEmaiHostess(uuid) {
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!uuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const attendee = await getAttendee(conn, uuid);
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+    const allAttendees = await getAttendeesByNightTable(conn, {eventDate:format(attendee.eventDate, 'yyyy-MM-dd'), tableNumber:attendee.tableNumber });
+
+    const sendAttendees = []
+    
+    allAttendees.forEach(x =>{
+
+      if(x.isHostess) {return}
+      const returnValue = [x.name]
+      if(x.masterObject && x.uuid != x.masterAttendeeUuid){ returnValue.push(`(${JSON.parse(x.masterObject).name})`) }
+      sendAttendees.push({name: returnValue.join(' - ')})
+
+    })
+
+    const emailData = {
+      date: eventDateFormatted,
+      nightOfTableNumber: attendee.nightOfTableNumber,
+      name: attendee.name,
+      email: attendee.email,
+      phone: attendee.phone,
+      attendees: sendAttendees
+    }
+    
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee.email,
+      //cc: attendee.hostessEmail,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball: In 2 days!',
+      templateId: 'd-c282e00932ed49f99ad75fc386c862a2',
+      dynamicTemplateData: emailData,
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        // const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
+
 // test route to activate an email or sms function
 router.get('/test/:uuid', async (req, res) => {
   const {uuid} = req.params
-  await generalAttendeeEmail(uuid);
+ // await reminderEmailGeneral(uuid);
   return res.status(200).json({ uuid });
 });
 
@@ -517,10 +663,11 @@ async function getCosts(dbConn) {
   return costs;
 }
 async function getAttendee(dbConn, uuid) {
-  const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
+  const sql = `SELECT eventAttendees.*, eventTables.nightOfTableNumber, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
   LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid
   LEFT JOIN eventAttendees AS hostessData ON hostessData.eventDate = eventAttendees.eventDate AND  hostessData.tableNumber = eventAttendees.tableNumber AND hostessData.isHostess=1
+  LEFT JOIN eventTables ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
   WHERE eventAttendees.uuid=?
   AND eventAttendees.deleted IS NULL;;`;
   const results = await dbConn.query(sql, [uuid]);
@@ -529,10 +676,11 @@ async function getAttendee(dbConn, uuid) {
   return data;
 }
 async function getAttendeesByMasterId(dbConn, masterUuid) {
-  const sql = `SELECT eventAttendees.*, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
+  const sql = `SELECT eventAttendees.*, eventTables.nightOfTableNumber, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
   LEFT JOIN eventPayments ON eventAttendees.uuid = eventPayments.uuid
   LEFT JOIN eventAttendees AS hostessData ON hostessData.eventDate = eventAttendees.eventDate AND  hostessData.tableNumber = eventAttendees.tableNumber AND hostessData.isHostess=1
+  LEFT JOIN eventTables ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
   WHERE eventAttendees.masterAttendeeUuid=?
   AND eventAttendees.deleted IS NULL;`;
   const results = await dbConn.query(sql, [masterUuid]);
@@ -540,6 +688,26 @@ async function getAttendeesByMasterId(dbConn, masterUuid) {
   const data = results[0];
   return data;
 }
+
+async function getAttendeesByNightTable(dbConn, {eventDate, tableNumber}) {
+  const sql = `SELECT 
+  eventAttendees.*,
+  IF(master.id IS NOT NULL, JSON_OBJECT( 'name', master.name, 'phone', master.phone, 'email', master.email), null)  as masterObject
+  FROM eventAttendees 
+  LEFT JOIN eventAttendees AS master ON eventAttendees.masterAttendeeUuid = master.masterAttendeeUuid
+  WHERE eventAttendees.eventDate = ? 
+  AND eventAttendees.tableNumber = ?
+  GROUP BY eventAttendees.id
+  ORDER BY eventAttendees.isHostess DESC, eventAttendees.name ASC;`;
+  const results = await dbConn.query(sql, [eventDate, tableNumber]);
+
+  const data = results[0];
+  return data;
+}
+
+
+
+
 async function calculateTotalPrice(dbConn, uuid) {
 
   if(!uuid){
