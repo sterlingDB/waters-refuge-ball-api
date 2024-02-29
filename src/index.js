@@ -56,20 +56,12 @@ const api = require('./refuge-front/routes');
 
 www.use(redirectController, express.static(path.join(__dirname, 'refuge-front/dist')));
 
-www.use('/register', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/dist/index.html');
-});
-www.use('/payment', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/dist/index.html');
-});
-www.use('/confirm', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/dist/index.html');
-});
-www.use('/hostess', async (req, res) => {
-  res.sendFile(__dirname + '/refuge-front/dist/index.html');
-});
 www.use('/api', api);
 
+// generic route to direct all traffice other than /api to the vue app
+www.use('*', async (req, res) => {
+  res.sendFile(__dirname + '/refuge-front/dist/index.html');
+});
 // admin app
 // const admin = express();
 // const adminAuthApi = require('./admin-api/auth');

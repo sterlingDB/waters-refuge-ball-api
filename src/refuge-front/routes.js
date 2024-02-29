@@ -53,6 +53,7 @@ async function hostessConfirmationEmail(uuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
+      cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Confirmation',
       templateId: 'd-0aeac20b7eae429ca69c3f2563828d90',
@@ -328,7 +329,7 @@ async function generalAttendeeConfirmationEmail(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
-      //cc: attendee.hostessEmail,
+      cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Registration!',
       templateId: 'd-4af898133b5f4d9abf294a3b72e0fc88',
@@ -462,8 +463,8 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: 'jmorris@sterling-databases.com',
-     // to: attendee[0].hostessEmail,
-      //cc: attendee.hostessEmail,
+      cc: 'sarah@thewaterschurch.net',
+      // to: attendee[0].hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Hostess Alert: Attendees assigned to your table',
       templateId: 'd-546ffc139d884996bfc142b102645286',
@@ -533,6 +534,7 @@ async function reminderEmailGeneral(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
+      cc: 'sarah@thewaterschurch.net',
       //cc: attendee.hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Tomorrow Night!',
@@ -604,7 +606,7 @@ async function reminderEmaiHostess(uuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
-      //cc: attendee.hostessEmail,
+      cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: In 2 days!',
       templateId: 'd-c282e00932ed49f99ad75fc386c862a2',
@@ -1512,14 +1514,15 @@ router.post('/payment', async (req, res) => {
     const paidSQLUpdate = `UPDATE eventAttendees 
     SET hasPaid=1
     WHERE uuid=? OR masterAttendeeUuid=?;`;
-    const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid]);
+    const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid, args.uuid]);
 
     if (attendee.isHostess) {
       hostessConfirmationEmail(args.uuid);
       hostessConfirmationSms(args.uuid);
     }else{
-      await generalAttendeeConfirmationSms(mainUuid);
-      await generalAttendeeConfirmationEmail(mainUuid);
+      await generalAttendeeConfirmationSms(args.uuid);
+      await generalAttendeeConfirmationEmail(args.uuid);
+      await generalAttendeeNotifyHostessEmail(args.uuid)
     }
 
     conn.end();
