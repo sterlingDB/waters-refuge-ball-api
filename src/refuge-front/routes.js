@@ -38,7 +38,7 @@ const cashCode = 'cash2024';
             Refuge Ball Registration: Confirmation: Hostess
                 d-0aeac20b7eae429ca69c3f2563828d90
     */
-async function hostessEmail(uuid) {
+async function hostessConfirmationEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
   try {
@@ -83,7 +83,7 @@ async function hostessEmail(uuid) {
     conn.end();
   }
 }
-async function hostessSms(uuid) {
+async function hostessConfirmationSms(uuid) {
   if (!uuid) {
     return { error: 'uuid is required' };
   }
@@ -135,7 +135,7 @@ https://refugeball.com/hostess/${attendee.uuid}
             Refuge Ball Registration: Invitation: Hostess to Attendee
                 d-32a8065be9484efda98412c347beba26
     */
-async function inviteAttendeeEmail(uuid) {
+async function attendeeInviteEmail(uuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
   try {
@@ -184,7 +184,7 @@ async function inviteAttendeeEmail(uuid) {
     conn.end();
   }
 }
-async function inviteAttendeeSms(uuid) {
+async function attendeeInviteSms(uuid) {
   if (!uuid) {
     return { error: 'uuid is required' };
   }
@@ -292,7 +292,7 @@ async function inviteeConfirmationEmail(uuid) {
             Refuge Ball Registration: Confirmation: General
                 d-4af898133b5f4d9abf294a3b72e0fc88
     */
-async function generalAttendeeEmail(masterUuid) {
+async function generalAttendeeConfirmationEmail(masterUuid) {
   const conn = await mysql.createConnection(mysqlServer);
 
   try {
@@ -355,7 +355,7 @@ async function generalAttendeeEmail(masterUuid) {
     conn.end();
   }
 }
-async function generalAttendeeSms(masterUuid) {
+async function generalAttendeeConfirmationSms(masterUuid) {
   if (!masterUuid) {
     return { error: 'masterUuid is required' };
   }
@@ -818,8 +818,8 @@ router.get('/autoCleanup', async (req, res) => {
 */
 router.get('/hostessEmail', async (req, res) => {
   try {
-    const emailResponce = await hostessEmail(req.query.uuid);
-    const textResponce = await hostessSms(req.query.uuid);
+    const emailResponce = await hostessConfirmationEmail(req.query.uuid);
+    const textResponce = await hostessConfirmationSms(req.query.uuid);
 
     return res.status(200).json({ textResponce, emailResponce });
   } catch (err) {
@@ -831,7 +831,7 @@ router.get('/hostessEmail', async (req, res) => {
 router.post('/sendAnotherEmail', async (req, res) => {
   try {
     
-    const emailResponce = await inviteAttendeeEmail(req.body.uuid);
+    const emailResponce = await attendeeInviteEmail(req.body.uuid);
     //console.log(req.body.uuid)
 
     return res.status(200).json({ emailResponce });
@@ -843,7 +843,7 @@ router.post('/sendAnotherEmail', async (req, res) => {
 
 router.post('/sendAnotherText', async (req, res) => {
   try {
-    const textResponce = await inviteAttendeeSms(req.body.uuid);
+    const textResponce = await attendeeInviteSms(req.body.uuid);
     //console.log(req.body.uuid)
 
     return res.status(200).json({ textResponce });
@@ -917,8 +917,8 @@ router.post('/reserveHostess', async (req, res) => {
       }
 
       if (isHostess) {
-        hostessEmail(uuid);
-        hostessSms(uuid);
+        hostessConfirmationEmail(uuid);
+        hostessConfirmationSms(uuid);
       }
     }
 
@@ -1056,8 +1056,8 @@ router.post('/reserveGeneral', async (req, res) => {
 
     if (paidCash || isFree) {
 
-      await generalAttendeeSms(mainUuid);
-      await generalAttendeeEmail(mainUuid);
+      await generalAttendeeConfirmationSms(mainUuid);
+      await generalAttendeeConfirmationEmail(mainUuid);
 
       return res
         .status(200)
@@ -1065,8 +1065,8 @@ router.post('/reserveGeneral', async (req, res) => {
     }
 
     if (successCount === +args.ticketCount) {
-      await generalAttendeeSms(mainUuid);
-      await generalAttendeeEmail(mainUuid);
+      // await generalAttendeeConfirmationSms(mainUuid);
+      // await generalAttendeeConfirmationEmail(mainUuid);
       return res
         .status(200)
         .json({ success: 'good to go', mainUuid, continue: 'payment' });
@@ -1159,7 +1159,7 @@ router.post('/inviteAttendee', async (req, res) => {
 
     const attendeeId = results[0].insertId;
 
-    await inviteAttendeeEmail(newUuid);
+    await attendeeInviteEmail(newUuid);
 
     conn.end();
 
@@ -1197,7 +1197,7 @@ router.post('/transferAttendee', async (req, res) => {
 
     const attendeeId = results[0].insertId;
 
-    await inviteAttendeeEmail(args.uuid);
+    await attendeeInviteEmail(args.uuid);
 
     conn.end();
 
@@ -1511,12 +1511,15 @@ router.post('/payment', async (req, res) => {
 
     const paidSQLUpdate = `UPDATE eventAttendees 
     SET hasPaid=1
-    WHERE uuid=?;`;
+    WHERE uuid=? OR masterAttendeeUuid=?;`;
     const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid]);
 
     if (attendee.isHostess) {
-      hostessEmail(args.uuid);
-      hostessSms(args.uuid);
+      hostessConfirmationEmail(args.uuid);
+      hostessConfirmationSms(args.uuid);
+    }else{
+      await generalAttendeeConfirmationSms(mainUuid);
+      await generalAttendeeConfirmationEmail(mainUuid);
     }
 
     conn.end();
