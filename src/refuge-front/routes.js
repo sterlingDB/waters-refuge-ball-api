@@ -1417,9 +1417,11 @@ router.post('/getTableAttendees', async (req, res) => {
 
     const sqlTableAttendees = `SELECT 
     eventAttendees.*,
+		IF( (ISNULL(payments.created) AND eventAttendees.hasPaid=1), eventAttendees.created, payments.created ) as paidDate,
     IF(master.id IS NOT NULL, JSON_OBJECT( 'name', master.name, 'phone', master.phone, 'email', master.email), null)  as masterObject
     FROM eventAttendees 
     LEFT JOIN eventAttendees AS master ON eventAttendees.masterAttendeeUuid = master.masterAttendeeUuid
+    LEFT JOIN eventPayments AS payments ON eventAttendees.uuid = payments.uuid
     WHERE eventAttendees.eventDate = ? 
     AND eventAttendees.tableNumber = ?
     GROUP BY eventAttendees.id
