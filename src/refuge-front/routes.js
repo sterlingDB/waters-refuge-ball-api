@@ -248,7 +248,7 @@ async function inviteeConfirmationEmail(uuid) {
 
     let options = '';
     if(attendee.specialDinner){
-      options += 'Special Dinner: Vegan and Gluten Free'
+      options += 'Special Dinner: Dairy / Gluten Free'
     }
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -329,7 +329,7 @@ async function generalAttendeeConfirmationEmail(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
-      cc: 'sarah@thewaterschurch.net',
+      // cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Registration!',
       templateId: 'd-4af898133b5f4d9abf294a3b72e0fc88',
@@ -462,9 +462,9 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
-      to: 'jmorris@sterling-databases.com',
-      cc: 'sarah@thewaterschurch.net',
-      // to: attendee[0].hostessEmail,
+      //to: 'jmorris@sterling-databases.com',
+      //cc: 'sarah@thewaterschurch.net',
+      to: attendee[0].hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Hostess Alert: Attendees assigned to your table',
       templateId: 'd-546ffc139d884996bfc142b102645286',
@@ -534,7 +534,7 @@ async function reminderEmailGeneral(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
-      cc: 'sarah@thewaterschurch.net',
+      // cc: 'sarah@thewaterschurch.net',
       //cc: attendee.hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Tomorrow Night!',
