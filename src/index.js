@@ -161,28 +161,28 @@ if (process.env.NODE_ENV === 'production') {
     ca: ca,
   };
 
-  // *.refugeball.com cert
-  // const privateKey2 = fs.readFileSync(
-  //   '/etc/letsencrypt/live/refugeball.com/privkey.pem',
-  //   'utf8'
-  // );
-  // const certificate2 = fs.readFileSync(
-  //   '/etc/letsencrypt/live/refugeball.com/cert.pem',
-  //   'utf8'
-  // );
-  // const ca2 = fs.readFileSync(
-  //   '/etc/letsencrypt/live/refugeball.com/chain.pem',
-  //   'utf8'
-  // );
+  //*.refugeball.com cert
+  const privateKey2 = fs.readFileSync(
+    '/etc/letsencrypt/live/refugeball.com-0002/privkey.pem',
+    'utf8'
+  );
+  const certificate2 = fs.readFileSync(
+    '/etc/letsencrypt/live/refugeball.com-0002/fullchain.pem',
+    'utf8'
+  );
+  const ca2 = fs.readFileSync(
+    '/etc/letsencrypt/live/refugeball.com-0002/chain.pem',
+    'utf8'
+  );
 
-  // const credentials2 = {
-  //   key: privateKey2,
-  //   cert: certificate2,
-  //   ca: ca2,
-  // };
+  const credentials2 = {
+    key: privateKey2,
+    cert: certificate2,
+    ca: ca2,
+  };
 
   const httpsServer = https.createServer(credentials, app);
-  // httpsServer.addContext('www.refugeball.com', credentials2);
+  httpsServer.addContext('www.refugeball.com', credentials2);
   // httpsServer.addContext('admin.refugeball.com', credentials2);
 
   httpsServer.listen(443, () => {

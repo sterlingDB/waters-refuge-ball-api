@@ -248,7 +248,7 @@ async function inviteeConfirmationEmail(uuid) {
 
     let options = '';
     if(attendee.specialDinner){
-      options += 'Special Dinner: Dairy / Gluten Free'
+      options += 'Special Dinner: Vegan and Gluten Free'
     }
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -329,7 +329,7 @@ async function generalAttendeeConfirmationEmail(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
-      // cc: 'sarah@thewaterschurch.net',
+      cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball Registration!',
       templateId: 'd-4af898133b5f4d9abf294a3b72e0fc88',
@@ -462,9 +462,9 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
-      //to: 'jmorris@sterling-databases.com',
-      //cc: 'sarah@thewaterschurch.net',
-      to: attendee[0].hostessEmail,
+      to: 'jmorris@sterling-databases.com',
+      cc: 'sarah@thewaterschurch.net',
+      // to: attendee[0].hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Hostess Alert: Attendees assigned to your table',
       templateId: 'd-546ffc139d884996bfc142b102645286',
@@ -534,7 +534,7 @@ async function reminderEmailGeneral(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
-      // cc: 'sarah@thewaterschurch.net',
+      cc: 'sarah@thewaterschurch.net',
       //cc: attendee.hostessEmail,
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Tomorrow Night!',
@@ -1417,11 +1417,9 @@ router.post('/getTableAttendees', async (req, res) => {
 
     const sqlTableAttendees = `SELECT 
     eventAttendees.*,
-		IF( (ISNULL(payments.created) AND eventAttendees.hasPaid=1), eventAttendees.created, payments.created ) as paidDate,
     IF(master.id IS NOT NULL, JSON_OBJECT( 'name', master.name, 'phone', master.phone, 'email', master.email), null)  as masterObject
     FROM eventAttendees 
     LEFT JOIN eventAttendees AS master ON eventAttendees.masterAttendeeUuid = master.masterAttendeeUuid
-    LEFT JOIN eventPayments AS payments ON eventAttendees.uuid = payments.uuid
     WHERE eventAttendees.eventDate = ? 
     AND eventAttendees.tableNumber = ?
     GROUP BY eventAttendees.id
