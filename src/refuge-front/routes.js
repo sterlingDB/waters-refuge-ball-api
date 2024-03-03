@@ -954,7 +954,7 @@ router.post('/reserveGeneralHold', async (req,res) => {
   FROM waters_refuge_ball.eventTables
   LEFT JOIN eventAttendees ON eventTables.eventDate = eventAttendees.eventDate AND eventTables.tableNumber = eventAttendees.tableNumber
   GROUP BY eventTables.id) AS availableTables
-  WHERE availableTables.seatsAvailable > ?
+  WHERE availableTables.seatsAvailable >= ?
   AND eventDate = ?
   ORDER BY seatsAvailable ASC
   LIMIT 0,1;`;
