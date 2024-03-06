@@ -634,6 +634,70 @@ async function reminderEmaiHostess(uuid) {
   }
 }
 
+    /*
+          Waitlist
+            Refuge Ball Waitlist: Confirmation
+                d-264bb7460f414a9eb67775b899a5415d
+    */
+async function waitlistConfirmationEmail(uuid) {
+  const dbConn = await mysql.createConnection(mysqlServer);
+
+  try {
+    if (!uuid) {
+      return { error: 'reservation not found' };
+    }
+
+    const sql = `SELECT *
+    FROM eventWaitlist 
+    WHERE uuid=?;`;
+    const waitlist = await dbConn.query(sql, [uuid]);
+
+    const attendee = waitlist[0][0];
+
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+
+    const emailData = {
+      date: eventDateFormatted,
+      numberOfTickets: attendee.numberOfTickets,
+      name: attendee.name,
+      email: attendee.email,
+      phone: attendee.phone,
+    }
+    
+
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: attendee.email,
+      from: 'refuge@thewaterschurch.net',
+      subject: 'Refuge Ball: Waitlist',
+      templateId: 'd-264bb7460f414a9eb67775b899a5415d',
+      dynamicTemplateData: emailData,
+    };
+    await sgMail
+      .send(msg)
+      .then(async (foo) => {
+        console.log('Email sent');
+
+        // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
+        // const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
+      })
+      .catch((error) => {
+        console.error(error);
+        return { error };
+      });
+
+    return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    dbConn.end();
+  }
+}
+                
+
+
 
 // test route to activate an email or sms function
 router.get('/test/:uuid', async (req, res) => {
@@ -1134,6 +1198,45 @@ router.post('/reserveInvitee', async (req, res) => {
   }
 });
 
+router.post('/addToWaitlist', async (req, res) => {
+  try {
+    const args = req.body;
+    const uuid = uuidv4();
+
+    const conn = await mysql.createConnection(mysqlServer);
+
+    const updateArgs = [
+      args.name,
+      args.phone,
+      args.email,
+      args.eventDate,
+      args.numberOfTickets,
+      uuid,
+    ];
+    const sql = `INSERT INTO eventWaitlist
+      SET name=?, phone=?, email=?, eventDate=?, numberOfTickets=?, uuid=?, created=NOW();`;
+    const results = await conn.query(sql, updateArgs);
+
+
+
+    conn.end();
+
+
+    if (results[0].affectedRows > 0) {
+      waitlistConfirmationEmail(uuid);
+      return res
+        .status(200)
+        .json({ success: 'good to go', uuid, continue: 'added to waitlist' });
+    } else {
+      return res.status(400).json({ error: 'no clue' });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Routes: Hostess dashboard
@@ -1554,10 +1657,16 @@ router.get('/status', async (req, res) => {
     const hostessInviteCloseDateTime = new Date(results.hostessInviteCloseDateTime);
     const generalOpenDateTime = new Date(results.generalOpenDateTime);
     const generalCloseDateTime = new Date(results.generalCloseDateTime);
+    const waitlistOpenDateTime = new Date(results.waitlistOpenDateTime);
+    const waitlistCloseDateTime = new Date(results.waitlistCloseDateTime);
 
     if (now >= generalOpenDateTime && now <= generalCloseDateTime) {
       status.push('general');
     }
+    if (now >= waitlistOpenDateTime && now <= waitlistCloseDateTime) {
+      status.push('waitlist');
+    }
+
     if (now >= hostessOpenDateTime) {
       status.push('hostess');
     }
@@ -1671,6 +1780,27 @@ router.post('/generalDatesForTicketCount', async (req, res) => {
     return res.status(400).json(err);
   }
 });
+
+router.get('/eventDates', async (req, res) => {
+  try {
+    const conn = await mysql.createConnection(mysqlServer);
+    const sql = `SELECT *
+    FROM eventDates
+    ORDER BY eventDate ASC;`;
+    const [results] = await conn.query(sql);
+    conn.end();
+
+    const returnData = results.map((x) => {
+      return format(x.eventDate, 'yyyy-MM-dd')
+    });
+
+    return res.status(200).json(returnData);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
 
 
 module.exports = router;
