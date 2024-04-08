@@ -710,7 +710,7 @@ router.get('/hostess2DayNotice/:date', async (req, res) => {
     const data = results[0];
 
     for (const attendee of data) {
-      await reminderEmaiHostess(attendee.uuid);
+      //await reminderEmaiHostess(attendee.uuid);
       //debugger;
     }
   } catch (err) {
@@ -733,7 +733,7 @@ router.get('/attendee1DayNotice/:date', async (req, res) => {
     const data = results[0];
 
     for (const attendee of data) {
-      await reminderEmailGeneral(attendee.uuid);
+      //await reminderEmailGeneral(attendee.uuid);
       //debugger;
     }
   } catch (err) {
