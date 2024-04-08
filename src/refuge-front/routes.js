@@ -700,6 +700,7 @@ router.get('/test/:uuid', async (req, res) => {
   return res.status(200).json({ uuid });
 });
 
+// http://127.0.0.1:5100/api/hostess2DayNotice/2024-04-10
 router.get('/hostess2DayNotice/:date', async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -723,11 +724,13 @@ router.get('/hostess2DayNotice/:date', async (req, res) => {
   //
   return res.status(200).json({ date });
 });
+
+// http://127.0.0.1:5100/api/attendee1DayNotice/2024-04-10
 router.get('/attendee1DayNotice/:date', async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
   try {
-    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1;`;
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND email IS NOT NULL;`;
     const results = await conn.query(sql, [date]);
 
     const data = results[0];
