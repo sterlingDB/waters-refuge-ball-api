@@ -25,15 +25,13 @@ BigInt.prototype.toJSON = function() {
 const freeCode = 'free2024';
 const cashCode = 'cash2024';
 
-
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Email and SMS functions - Start
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 */
 
-
-    /*
+/*
           Hostess signup confirmation Email & SMS
             Refuge Ball Registration: Confirmation: Hostess
                 d-0aeac20b7eae429ca69c3f2563828d90
@@ -60,7 +58,7 @@ async function hostessConfirmationEmail(uuid) {
       dynamicTemplateData: {
         name: attendee.name,
         date: eventDateFormatted,
-        dashboardUrl:`https://refugeball.com/hostess/${attendee.uuid}`
+        dashboardUrl: `https://refugeball.com/hostess/${attendee.uuid}`,
       },
     };
     await sgMail
@@ -130,8 +128,7 @@ https://refugeball.com/hostess/${attendee.uuid}
   }
 }
 
-
-    /*
+/*
           Hostess Invites an attendee to the table: special invite: Email & SMS
             Refuge Ball Registration: Invitation: Hostess to Attendee
                 d-32a8065be9484efda98412c347beba26
@@ -158,10 +155,10 @@ async function attendeeInviteEmail(uuid) {
       dynamicTemplateData: {
         name: attendee.name,
         date: eventDateFormatted,
-        hostessName:attendee.hostessName,
-        hostessFirstName:attendee.hostessName.split(' ')[0],
-        hostessEmail:attendee.hostessEmail,
-        uniqueUrl:`https://refugeball.com/register/${uuid}`,
+        hostessName: attendee.hostessName,
+        hostessFirstName: attendee.hostessName.split(' ')[0],
+        hostessEmail: attendee.hostessEmail,
+        uniqueUrl: `https://refugeball.com/register/${uuid}`,
       },
     };
     await sgMail
@@ -230,7 +227,7 @@ https://refugeball.com/register/${uuid}
   }
 }
 
-    /*
+/*
           Invited Attendee Registration: confirmation Email & SMS
             Refuge Ball Registration: Confirmation: Invited Attendee
                 d-8303e70d62c8426ab1da2c5a57cf86fc
@@ -247,8 +244,8 @@ async function inviteeConfirmationEmail(uuid) {
     const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
 
     let options = '';
-    if(attendee.specialDinner){
-      options += 'Special Dinner: Vegan and Gluten Free'
+    if (attendee.specialDinner) {
+      options += 'Special Dinner: Vegan and Gluten Free';
     }
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -260,9 +257,9 @@ async function inviteeConfirmationEmail(uuid) {
       dynamicTemplateData: {
         name: attendee.name,
         date: eventDateFormatted,
-        hostessName:attendee.hostessName,
-        hostessEmail:attendee.hostessEmail,
-        options: options
+        hostessName: attendee.hostessName,
+        hostessEmail: attendee.hostessEmail,
+        options: options,
       },
     };
     await sgMail
@@ -287,8 +284,7 @@ async function inviteeConfirmationEmail(uuid) {
   }
 }
 
-
-    /*
+/*
           General Registration: confirmation Email & SMS
             Refuge Ball Registration: Confirmation: General
                 d-4af898133b5f4d9abf294a3b72e0fc88
@@ -313,17 +309,16 @@ async function generalAttendeeConfirmationEmail(masterUuid) {
       phone: attendee[0].phone,
       specialDinner: attendee[0].specialDinner,
       date: eventDateFormatted,
-      uniqueUrl:`https://refugeball.com/group/manage/${masterUuid}`,
-    }
-    
-    if(attendee.length >= 2){
-      emailData.attendee2 = attendee[1].name;
-      emailData.specialDinner2 = attendee[1].specialDinner
+      uniqueUrl: `https://refugeball.com/group/manage/${masterUuid}`,
+    };
 
+    if (attendee.length >= 2) {
+      emailData.attendee2 = attendee[1].name;
+      emailData.specialDinner2 = attendee[1].specialDinner;
     }
-    if(attendee.length >= 3){
+    if (attendee.length >= 3) {
       emailData.attendee3 = attendee[2].name;
-      emailData.specialDinner3 = attendee[2].specialDinner
+      emailData.specialDinner3 = attendee[2].specialDinner;
     }
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -362,7 +357,6 @@ async function generalAttendeeConfirmationSms(masterUuid) {
   }
   const conn = await mysql.createConnection(mysqlServer);
 
-  
   try {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -372,28 +366,27 @@ async function generalAttendeeConfirmationSms(masterUuid) {
 
     const eventDateFormatted = format(attendee[0].eventDate, 'eeee MMMM do');
 
-    const attendeeBody = []
-    let pushData = [`Attendee:\r   ${attendee[0].name}`]
-    if(attendee[0].specialDinner){
-      pushData.push('Special Dinner')
+    const attendeeBody = [];
+    let pushData = [`Attendee:\r   ${attendee[0].name}`];
+    if (attendee[0].specialDinner) {
+      pushData.push('Special Dinner');
     }
-    attendeeBody.push(pushData.join(': '))
+    attendeeBody.push(pushData.join(': '));
 
-    if(attendee.length >= 2){
-       pushData = [`Attendee 2:\r   ${attendee[1].name}`]
-      if(attendee[1].specialDinner){
-        pushData.push('Special Dinner')
+    if (attendee.length >= 2) {
+      pushData = [`Attendee 2:\r   ${attendee[1].name}`];
+      if (attendee[1].specialDinner) {
+        pushData.push('Special Dinner');
       }
-      attendeeBody.push(pushData.join(': '))
+      attendeeBody.push(pushData.join(': '));
     }
-    if(attendee.length >= 3){
-       pushData = [`Attendee 3:\r   ${attendee[2].name}`]
-      if(attendee[2].specialDinner){
-        pushData.push('Special Dinner')
+    if (attendee.length >= 3) {
+      pushData = [`Attendee 3:\r   ${attendee[2].name}`];
+      if (attendee[2].specialDinner) {
+        pushData.push('Special Dinner');
       }
-      attendeeBody.push(pushData.join(': '))
+      attendeeBody.push(pushData.join(': '));
     }
-
 
     const body = `Your going to the Refuge Ball!
     ${eventDateFormatted}
@@ -427,7 +420,7 @@ async function generalAttendeeConfirmationSms(masterUuid) {
   }
 }
 
-    /*
+/*
           General Registration: Notify Hostess
             Refuge Ball Registration: Notice: Hostess: Assigned Attendee
                 d-546ffc139d884996bfc142b102645286
@@ -451,12 +444,12 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
       email: attendee[0].email,
       phone: attendee[0].phone,
       date: eventDateFormatted,
-    }
-    
-    if(attendee.length >= 2){
+    };
+
+    if (attendee.length >= 2) {
       emailData.attendee2 = attendee[1].name;
     }
-    if(attendee.length >= 3){
+    if (attendee.length >= 3) {
       emailData.attendee3 = attendee[2].name;
     }
 
@@ -473,7 +466,9 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
     await sgMail
       .send(msg)
       .then(async (foo) => {
-        console.log('Email sent: Hostess Alert: Attendees assigned to your table');
+        console.log(
+          'Email sent: Hostess Alert: Attendees assigned to your table'
+        );
 
         // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
         // const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
@@ -492,8 +487,7 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
   }
 }
 
-
-    /*
+/*
           Day Before: Reminder & Info: General
             Refuge Ball Registration: Pre-Event: 1 Day Before: Attendees
                 d-b3fdaf10714d49ed84415abe2ed5671b
@@ -507,8 +501,8 @@ async function reminderEmailGeneral(masterUuid) {
     }
 
     let attendee = await getAttendeesByMasterId(conn, masterUuid);
-    if(attendee.length === 0){
-       attendee = [await getAttendee(conn, masterUuid)];
+    if (attendee.length === 0) {
+      attendee = [await getAttendee(conn, masterUuid)];
     }
     const eventDateFormatted = format(attendee[0].eventDate, 'eeee MMMM do');
 
@@ -521,21 +515,21 @@ async function reminderEmailGeneral(masterUuid) {
       email: attendee[0].email,
       phone: attendee[0].phone,
       attendee2: null,
-      attendee3: null
+      attendee3: null,
+    };
+
+    if (attendee.length >= 2) {
+      emailData.attendee2 = attendee[1].name;
     }
-    
-    if(attendee.length >= 2){
-      emailData.attendee2 = attendee[1].name;                
-    }
-    if(attendee.length >= 3){
+    if (attendee.length >= 3) {
       emailData.attendee3 = attendee[2].name;
     }
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
+      //to: 'jmorris@sterling-databases.com',
       to: attendee[0].email,
-      cc: 'sarah@thewaterschurch.net',
-      //cc: attendee.hostessEmail,
+      //cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: Tomorrow Night!',
       templateId: 'd-b3fdaf10714d49ed84415abe2ed5671b',
@@ -562,9 +556,8 @@ async function reminderEmailGeneral(masterUuid) {
     conn.end();
   }
 }
-                
 
-    /*
+/*
           2 Days Before: Reminder & Info: Hostess
             Refuge Ball Registration: Pre-Event: 2 Day Before: Hostess
                 d-c282e00932ed49f99ad75fc386c862a2
@@ -580,18 +573,23 @@ async function reminderEmaiHostess(uuid) {
     const attendee = await getAttendee(conn, uuid);
     const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
 
-    const allAttendees = await getAttendeesByNightTable(conn, {eventDate:format(attendee.eventDate, 'yyyy-MM-dd'), tableNumber:attendee.tableNumber });
+    const allAttendees = await getAttendeesByNightTable(conn, {
+      eventDate: format(attendee.eventDate, 'yyyy-MM-dd'),
+      tableNumber: attendee.tableNumber,
+    });
 
-    const sendAttendees = []
-    
-    allAttendees.forEach(x =>{
+    const sendAttendees = [];
 
-      if(x.isHostess) {return}
-      const returnValue = [x.name]
-      if(x.masterObject && x.uuid != x.masterAttendeeUuid){ returnValue.push(`(${JSON.parse(x.masterObject).name})`) }
-      sendAttendees.push({name: returnValue.join(' - ')})
-
-    })
+    allAttendees.forEach((x) => {
+      if (x.isHostess) {
+        return;
+      }
+      const returnValue = [x.name];
+      if (x.masterObject && x.uuid != x.masterAttendeeUuid) {
+        returnValue.push(`(${JSON.parse(x.masterObject).name})`);
+      }
+      sendAttendees.push({ name: returnValue.join(' - ') });
+    });
 
     const emailData = {
       date: eventDateFormatted,
@@ -599,13 +597,13 @@ async function reminderEmaiHostess(uuid) {
       name: attendee.name,
       email: attendee.email,
       phone: attendee.phone,
-      attendees: sendAttendees
-    }
-    
+      attendees: sendAttendees,
+    };
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
+      //to: 'jmorris@sterling-databases.com',
       cc: 'sarah@thewaterschurch.net',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: In 2 days!',
@@ -634,7 +632,7 @@ async function reminderEmaiHostess(uuid) {
   }
 }
 
-    /*
+/*
           Waitlist
             Refuge Ball Waitlist: Confirmation
                 d-264bb7460f414a9eb67775b899a5415d
@@ -656,15 +654,13 @@ async function waitlistConfirmationEmail(uuid) {
 
     const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
 
-
     const emailData = {
       date: eventDateFormatted,
       numberOfTickets: attendee.numberOfTickets,
       name: attendee.name,
       email: attendee.email,
       phone: attendee.phone,
-    }
-    
+    };
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
@@ -695,26 +691,66 @@ async function waitlistConfirmationEmail(uuid) {
     dbConn.end();
   }
 }
-                
-
-
 
 // test route to activate an email or sms function
 router.get('/test/:uuid', async (req, res) => {
-  const {uuid} = req.params
- // await reminderEmailGeneral(uuid);
+  const { uuid } = req.params;
+  // await reminderEmailGeneral(uuid);
+  //await reminderEmaiHostess(uuid);
   return res.status(200).json({ uuid });
 });
 
+router.get('/hostess2DayNotice/:date', async (req, res) => {
+  const { date } = req.params;
+  const conn = await mysql.createConnection(mysqlServer);
+  try {
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND isHostess=1;`;
+    const results = await conn.query(sql, [date]);
 
+    const data = results[0];
+
+    for (const attendee of data) {
+      await reminderEmaiHostess(attendee.uuid);
+      //debugger;
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+
+  //
+  return res.status(200).json({ date });
+});
+router.get('/attendee1DayNotice/:date', async (req, res) => {
+  const { date } = req.params;
+  const conn = await mysql.createConnection(mysqlServer);
+  try {
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1;`;
+    const results = await conn.query(sql, [date]);
+
+    const data = results[0];
+
+    for (const attendee of data) {
+      await reminderEmailGeneral(attendee.uuid);
+      //debugger;
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+
+  //
+  return res.status(200).json({ date });
+});
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Email and SMS functions - End
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 */
-
-
-
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -755,7 +791,7 @@ async function getAttendeesByMasterId(dbConn, masterUuid) {
   return data;
 }
 
-async function getAttendeesByNightTable(dbConn, {eventDate, tableNumber}) {
+async function getAttendeesByNightTable(dbConn, { eventDate, tableNumber }) {
   const sql = `SELECT 
   eventAttendees.*,
   IF(master.id IS NOT NULL, JSON_OBJECT( 'name', master.name, 'phone', master.phone, 'email', master.email), null)  as masterObject
@@ -771,27 +807,25 @@ async function getAttendeesByNightTable(dbConn, {eventDate, tableNumber}) {
   return data;
 }
 
-
-
-
 async function calculateTotalPrice(dbConn, uuid) {
-
-  if(!uuid){
-    return  "error" ;
+  if (!uuid) {
+    return 'error';
   }
 
   const costs = await getCosts(dbConn);
   const attendee = await getAttendee(dbConn, uuid);
-  let chargeAmount = 0
-  let allAttendees = []
+  let chargeAmount = 0;
+  let allAttendees = [];
 
-  if(attendee?.masterAttendeeUuid){
-    allAttendees = await getAttendeesByMasterId(dbConn, attendee.masterAttendeeUuid)
+  if (attendee?.masterAttendeeUuid) {
+    allAttendees = await getAttendeesByMasterId(
+      dbConn,
+      attendee.masterAttendeeUuid
+    );
   }
 
-
-  if(allAttendees.length>0){
-    allAttendees.forEach(x => {
+  if (allAttendees.length > 0) {
+    allAttendees.forEach((x) => {
       if (!x.isHostess) {
         chargeAmount += costs.general;
       }
@@ -801,25 +835,20 @@ async function calculateTotalPrice(dbConn, uuid) {
       if (x.specialDinner) {
         chargeAmount += costs.specialDinner;
       }
-    })
-  }else{
-   chargeAmount = costs.general;
+    });
+  } else {
+    chargeAmount = costs.general;
     if (attendee.isHostess) {
       chargeAmount = costs.hostess;
     }
     if (attendee.specialDinner) {
       chargeAmount += costs.specialDinner;
     }
-
   }
-
-
-
 
   return { charge: chargeAmount * 100, display: chargeAmount };
 }
-async function autoDeletes(dbConn){
-
+async function autoDeletes(dbConn) {
   // general deletes
   const sqlA = `DELETE
   FROM waters_refuge_ball.eventAttendees 
@@ -850,12 +879,8 @@ async function autoDeletes(dbConn){
   const resultsB = await dbConn.query(sqlB);
   const resultsC = await dbConn.query(sqlC);
 
-  return [resultsA,resultsB,resultsC];
-
+  return [resultsA, resultsB, resultsC];
 }
-
-
-
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -876,7 +901,6 @@ router.get('/autoCleanup', async (req, res) => {
   }
 });
 
-
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Routes that send email & sms
@@ -896,7 +920,6 @@ router.get('/hostessEmail', async (req, res) => {
 
 router.post('/sendAnotherEmail', async (req, res) => {
   try {
-    
     const emailResponce = await attendeeInviteEmail(req.body.uuid);
     //console.log(req.body.uuid)
 
@@ -918,8 +941,6 @@ router.post('/sendAnotherText', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
-
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -1009,8 +1030,7 @@ router.post('/reserveHostess', async (req, res) => {
   }
 });
 
-router.post('/reserveGeneralHold', async (req,res) => {
-  
+router.post('/reserveGeneralHold', async (req, res) => {
   const args = req.body;
   const conn = await mysql.createConnection(mysqlServer);
 
@@ -1022,43 +1042,40 @@ router.post('/reserveGeneralHold', async (req,res) => {
   AND eventDate = ?
   ORDER BY seatsAvailable ASC
   LIMIT 0,1;`;
- 
-  const tableResults = await conn.query(sqlTableNumber, [args.ticketCount, args.eventDate]);
-  
+
+  const tableResults = await conn.query(sqlTableNumber, [
+    args.ticketCount,
+    args.eventDate,
+  ]);
+
   const masterAttendeeUuid = uuidv4();
-  const returnUuids = [masterAttendeeUuid]
+  const returnUuids = [masterAttendeeUuid];
 
+  for (let count = 1; count <= +args.ticketCount; count++) {
+    console.log(count);
 
-  for(let count = 1; count <= +args.ticketCount; count++){
-      console.log(count)
+    const thisUuid = uuidv4();
+    if (count != 1) {
+      returnUuids.push(thisUuid);
+    }
 
-        const thisUuid = uuidv4()
-        if(count!= 1){returnUuids.push(thisUuid)}
-
-        const dbArgs = [
-          args.eventDate,
-          tableResults[0][0].tableNumber,
-          count===1 ? masterAttendeeUuid : thisUuid,
-          masterAttendeeUuid
-        ];
-        const sql = `INSERT INTO eventAttendees 
+    const dbArgs = [
+      args.eventDate,
+      tableResults[0][0].tableNumber,
+      count === 1 ? masterAttendeeUuid : thisUuid,
+      masterAttendeeUuid,
+    ];
+    const sql = `INSERT INTO eventAttendees 
             SET eventDate=?, tableNumber=?, uuid=?, masterAttendeeUuid=?, created=NOW();`;
-        const results = await conn.query(sql, dbArgs);
-
+    const results = await conn.query(sql, dbArgs);
   }
-
-
 
   await conn.end();
 
   return res.status(200).json(returnUuids);
+});
 
-
-
-})
-
-router.post('/reserveGeneralFetch', async (req,res) => {
-  
+router.post('/reserveGeneralFetch', async (req, res) => {
   const args = req.body;
   const masterAttendeeUuid = args.masterUuid;
 
@@ -1067,31 +1084,34 @@ router.post('/reserveGeneralFetch', async (req,res) => {
   const sqlAttendees = `SELECT uuid FROM eventAttendees
   WHERE masterAttendeeUuid = ?
   ORDER BY id ASC;`;
- 
+
   const attendeeResults = await conn.query(sqlAttendees, [masterAttendeeUuid]);
-  
-  const returnUuids = []
-  attendeeResults[0].forEach(x=>{
-    returnUuids.push(x.uuid)
-  })
+
+  const returnUuids = [];
+  attendeeResults[0].forEach((x) => {
+    returnUuids.push(x.uuid);
+  });
 
   await conn.end();
 
   return res.status(200).json(returnUuids);
-
-})
+});
 
 router.post('/reserveGeneral', async (req, res) => {
   try {
     const args = req.body;
 
-    const mainUuid = args.registrationData.uuid
+    const mainUuid = args.registrationData.uuid;
     const isFree = args.specialCode === freeCode ? true : false;
     const paidCash = args.specialCode === cashCode ? true : false;
     const conn = await mysql.createConnection(mysqlServer);
 
-    const groupArray = [args.registrationData, args.registrationData2, args.registrationData3]
-    const resultsArray = []
+    const groupArray = [
+      args.registrationData,
+      args.registrationData2,
+      args.registrationData3,
+    ];
+    const resultsArray = [];
     let successCount = 0;
 
     // loop for each registration
@@ -1105,23 +1125,22 @@ router.post('/reserveGeneral', async (req, res) => {
         x.options.includes('specialDinner') ? 1 : 0,
         paidCash,
         isFree,
-        (paidCash || isFree),
-        x.notes, 
+        paidCash || isFree,
+        x.notes,
         x.uuid,
       ];
-        
+
       const sql = `UPDATE eventAttendees 
           SET name=?, phone=?, email=?, eventDate=?, specialCode=?, specialDinner=?, 
           paidCash=?, isFree=?, hasPaid=?, notes=?, modified=NOW()
         WHERE  uuid=?;`;
-      const results = await conn.query(sql, updateArgs)
+      const results = await conn.query(sql, updateArgs);
       resultsArray.push(results[0].affectedRows);
-      successCount +=results[0].affectedRows
+      successCount += results[0].affectedRows;
     }
-    if(conn) conn.end();
+    if (conn) conn.end();
 
     if (paidCash || isFree) {
-
       await generalAttendeeConfirmationSms(mainUuid);
       await generalAttendeeConfirmationEmail(mainUuid);
 
@@ -1141,7 +1160,6 @@ router.post('/reserveGeneral', async (req, res) => {
       // return res
       // .status(200)
       // .json({ success: 'good to go', mainUuid, continue: 'payment' });
-
     }
   } catch (err) {
     console.error(err);
@@ -1174,7 +1192,6 @@ router.post('/reserveInvitee', async (req, res) => {
       SET name=?, phone=?, email=?, specialCode=?, specialDinner=?, paidCash=?, isFree=?, hasPaid=?, modified=NOW()
       WHERE  uuid=?;`;
     const results = await conn.query(sql, updateArgs);
-
 
     conn.end();
 
@@ -1217,10 +1234,7 @@ router.post('/addToWaitlist', async (req, res) => {
       SET name=?, phone=?, email=?, eventDate=?, numberOfTickets=?, uuid=?, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
-
-
     conn.end();
-
 
     if (results[0].affectedRows > 0) {
       waitlistConfirmationEmail(uuid);
@@ -1235,7 +1249,6 @@ router.post('/addToWaitlist', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -1346,7 +1359,6 @@ router.post('/removeAttendee', async (req, res) => {
   }
 });
 
-
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Routes: loading?
@@ -1360,8 +1372,8 @@ router.post('/getAttendee', async (req, res) => {
     conn.end();
 
     // if the attendee his no longer valid
-    if( !attendee || attendee.deleted){
-      return res.status(200).json({error: 'Invitation no longer valid.'});
+    if (!attendee || attendee.deleted) {
+      return res.status(200).json({ error: 'Invitation no longer valid.' });
     }
 
     attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
@@ -1378,24 +1390,26 @@ router.post('/getAllAttendeeByMaster', async (req, res) => {
     const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
 
-    let allAttendees = await getAttendeesByMasterId(conn, args.masterAttendeeUuid)
-    if(allAttendees.length === 0){
+    let allAttendees = await getAttendeesByMasterId(
+      conn,
+      args.masterAttendeeUuid
+    );
+    if (allAttendees.length === 0) {
       const singleAttendee = await getAttendee(conn, args.masterAttendeeUuid);
-      if(singleAttendee) {
-        allAttendees.push(singleAttendee)
+      if (singleAttendee) {
+        allAttendees.push(singleAttendee);
       }
     }
     conn.end();
 
-
     // if the attendee is no longer valid
-    if( allAttendees.length === 0){
-      return res.status(200).json({error: 'No data found'});
+    if (allAttendees.length === 0) {
+      return res.status(200).json({ error: 'No data found' });
     }
 
-    allAttendees.forEach(x=>{
+    allAttendees.forEach((x) => {
       x.eventDate = format(x.eventDate, 'yyyy-MM-dd');
-    })
+    });
 
     return res.status(200).json(allAttendees);
   } catch (err) {
@@ -1412,8 +1426,8 @@ router.post('/getMasterReservation', async (req, res) => {
     conn.end();
 
     // if the attendee his no longer valid
-    if( !attendee || attendee.deleted){
-      return res.status(200).json({error: 'Invitation no longer valid.'});
+    if (!attendee || attendee.deleted) {
+      return res.status(200).json({ error: 'Invitation no longer valid.' });
     }
 
     attendee.eventDate = format(attendee.eventDate, 'yyyy-MM-dd');
@@ -1425,7 +1439,6 @@ router.post('/getMasterReservation', async (req, res) => {
   }
 });
 
-
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Routes: mutations
@@ -1434,17 +1447,17 @@ router.post('/getMasterReservation', async (req, res) => {
 
 router.post('/updateHostessNotes', async (req, res) => {
   try {
-
     const args = req.body;
     const conn = await mysql.createConnection(mysqlServer);
     const sqlTableNumber = `UPDATE eventAttendees SET notes =? WHERE uuid=?;`;
-    const resultsUpdate = await conn.query(sqlTableNumber, [args.notes,args.uuid]);
+    const resultsUpdate = await conn.query(sqlTableNumber, [
+      args.notes,
+      args.uuid,
+    ]);
     conn.end();
 
     if (resultsUpdate[0].affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ success: 'notes updated'});
+      return res.status(200).json({ success: 'notes updated' });
     } else {
       return res.status(400).json({ error: 'no clue' });
     }
@@ -1456,35 +1469,33 @@ router.post('/updateHostessNotes', async (req, res) => {
 
 router.post('/updateGroupReservation', async (req, res) => {
   try {
+    const { groupData } = req.body;
 
-    const {groupData} = req.body
-
-    if(groupData.length > 0){
+    if (groupData.length > 0) {
       const conn = await mysql.createConnection(mysqlServer);
 
       const sqlGroupDataUpdate = `UPDATE eventAttendees SET name=?, email=?, phone=?, notes=? WHERE uuid=?;`;
-      const updateResults = []
-       for await(const x of groupData){
-        const individualResults = await conn.query(sqlGroupDataUpdate, [x.name, x.email, x.phone, x.notes, x.uuid ]);
-        updateResults.push(individualResults[0].info)
+      const updateResults = [];
+      for await (const x of groupData) {
+        const individualResults = await conn.query(sqlGroupDataUpdate, [
+          x.name,
+          x.email,
+          x.phone,
+          x.notes,
+          x.uuid,
+        ]);
+        updateResults.push(individualResults[0].info);
       }
       conn.end();
-  
+
       if (updateResults.length > 0) {
-        return res
-          .status(200)
-          .json({ success: updateResults});
+        return res.status(200).json({ success: updateResults });
       } else {
         return res.status(400).json({ error: 'no clue' });
       }
-
-    }else{
+    } else {
       return res.status(400).json({ error: 'no data' });
-
     }
-
-
-   
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
@@ -1530,28 +1541,26 @@ router.post('/getTableAttendees', async (req, res) => {
     GROUP BY eventAttendees.id
     ORDER BY eventAttendees.isHostess DESC, eventAttendees.name ASC;`;
 
-
     const tableResults = await conn.query(sqlTableAttendees, [
       args.eventDate,
       args.tableNumber,
     ]);
     conn.end();
 
-    tableResults[0].forEach((attendee)=>{
-      attendee.extra={hasPaid:'no', isHostess:'no'}
+    tableResults[0].forEach((attendee) => {
+      attendee.extra = { hasPaid: 'no', isHostess: 'no' };
 
-      if(attendee.hasPaid){
-        attendee.extra.hasPaid='yes'
+      if (attendee.hasPaid) {
+        attendee.extra.hasPaid = 'yes';
       }
-      if(attendee.isHostess){
-        attendee.extra.isHostess='yes'
+      if (attendee.isHostess) {
+        attendee.extra.isHostess = 'yes';
       }
-      if(attendee.masterObject){
-        attendee.masterObject = JSON.parse(attendee.masterObject)
+      if (attendee.masterObject) {
+        attendee.masterObject = JSON.parse(attendee.masterObject);
       }
       //debugger
-
-    })
+    });
 
     return res.status(200).json(tableResults[0]);
   } catch (err) {
@@ -1620,15 +1629,18 @@ router.post('/payment', async (req, res) => {
     const paidSQLUpdate = `UPDATE eventAttendees 
     SET hasPaid=1
     WHERE uuid=? OR masterAttendeeUuid=?;`;
-    const paidUpdateResults = await conn.query(paidSQLUpdate, [args.uuid, args.uuid]);
+    const paidUpdateResults = await conn.query(paidSQLUpdate, [
+      args.uuid,
+      args.uuid,
+    ]);
 
     if (attendee.isHostess) {
       hostessConfirmationEmail(args.uuid);
       hostessConfirmationSms(args.uuid);
-    }else{
+    } else {
       await generalAttendeeConfirmationSms(args.uuid);
       await generalAttendeeConfirmationEmail(args.uuid);
-      await generalAttendeeNotifyHostessEmail(args.uuid)
+      await generalAttendeeNotifyHostessEmail(args.uuid);
     }
 
     conn.end();
@@ -1654,7 +1666,9 @@ router.get('/status', async (req, res) => {
     conn.end();
 
     const hostessOpenDateTime = new Date(results.hostessOpenDateTime);
-    const hostessInviteCloseDateTime = new Date(results.hostessInviteCloseDateTime);
+    const hostessInviteCloseDateTime = new Date(
+      results.hostessInviteCloseDateTime
+    );
     const generalOpenDateTime = new Date(results.generalOpenDateTime);
     const generalCloseDateTime = new Date(results.generalCloseDateTime);
     const waitlistOpenDateTime = new Date(results.waitlistOpenDateTime);
@@ -1674,8 +1688,8 @@ router.get('/status', async (req, res) => {
       status.push('hostessInvites');
     }
 
-    if(status.length <= 0){
-      status.push('closed')
+    if (status.length <= 0) {
+      status.push('closed');
     }
 
     return res.status(200).json({ status });
@@ -1703,7 +1717,7 @@ router.post('/cancel', async (req, res) => {
   const conn = await mysql.createConnection(mysqlServer);
   const attendee = await getAttendee(conn, args.uuid);
 
-  if(attendee.invitation_email_sent==='0'){
+  if (attendee.invitation_email_sent === '0') {
     try {
       const sqlA = `UPDATE eventAttendees
       LEFT JOIN eventTables ON eventAttendees.id = eventTables.hostessId
@@ -1712,19 +1726,17 @@ router.post('/cancel', async (req, res) => {
       const sqlB = `DELETE FROM eventAttendees WHERE uuid=?;`;
       const resultsA = await conn.query(sqlA, [args.uuid]);
       const resultsB = await conn.query(sqlB, [args.uuid]);
-  
+
       conn.end();
-  
+
       return res.status(200).json('canceled');
     } catch (err) {
       console.error(err);
       return res.status(400).json(err);
     }
-  }else{
+  } else {
     return res.status(200).json('canceled');
   }
-  
-  
 });
 
 router.get('/availableForHosting', async (req, res) => {
@@ -1791,7 +1803,7 @@ router.get('/eventDates', async (req, res) => {
     conn.end();
 
     const returnData = results.map((x) => {
-      return format(x.eventDate, 'yyyy-MM-dd')
+      return format(x.eventDate, 'yyyy-MM-dd');
     });
 
     return res.status(200).json(returnData);
@@ -1800,7 +1812,5 @@ router.get('/eventDates', async (req, res) => {
     return res.status(400).json(err);
   }
 });
-
-
 
 module.exports = router;
