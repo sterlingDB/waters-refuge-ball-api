@@ -605,6 +605,7 @@ async function reminderEmaiHostess(uuid) {
       to: attendee.email,
       //to: 'jmorris@sterling-databases.com',
       cc: 'sarah@thewaterschurch.net',
+      bcc: 'jmorris@sterling-databases.com',
       from: 'refuge@thewaterschurch.net',
       subject: 'Refuge Ball: In 2 days!',
       templateId: 'd-c282e00932ed49f99ad75fc386c862a2',
@@ -624,6 +625,56 @@ async function reminderEmaiHostess(uuid) {
       });
 
     return { success: 'good to go' };
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+}
+
+async function dayOfEventSms(uuid) {
+  if (!uuid) {
+    return { error: 'uuid is required' };
+  }
+  const conn = await mysql.createConnection(mysqlServer);
+
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const client = require('twilio')(accountSid, authToken);
+
+    const attendee = await getAttendee(conn, uuid);
+    const eventDateFormatted = format(attendee.eventDate, 'eeee MMMM do');
+
+    const body = `The Refuge Ball is tonight!
+
+${attendee.name} your assigned to table # ${attendee.nightOfTableNumber}
+
+Auditorium doors open at 6:10, dinner served at 6:35.
+
+Don't forget to treat yourself to the free valet parking at the main entrance! 
+
+Check your email for more info!
+`;
+
+    const foo = await client.messages
+      .create({
+        body: body,
+        from: '+13203453479',
+        to: attendee.phone,
+        //to: '3202232089',
+      })
+      .then(async (message) => {
+        console.log(`text sent: ${attendee.name}`);
+
+        // const sqlUpdate = `UPDATE eventAttendees SET confirmation_text_sent=1 WHERE uuid=?;`;
+        // const [resultsUpdate] = await conn.query(sqlUpdate, [uuid]);
+
+        return message;
+      });
+
+    return { success: foo.sid };
   } catch (err) {
     console.error(err);
     return { error: err };
@@ -700,7 +751,7 @@ router.get('/test/:uuid', async (req, res) => {
   return res.status(200).json({ uuid });
 });
 
-// http://127.0.0.1:5100/api/hostess2DayNotice/2024-04-10
+// http://127.0.0.1:5100/api/hostess2DayNotice/2024-04-12
 router.get('/hostess2DayNotice/:date', async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -725,7 +776,7 @@ router.get('/hostess2DayNotice/:date', async (req, res) => {
   return res.status(200).json({ date });
 });
 
-// http://127.0.0.1:5100/api/attendee1DayNotice/2024-04-10
+// http://127.0.0.1:5100/api/attendee1DayNotice/2024-04-12
 router.get('/attendee1DayNotice/:date', async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -749,6 +800,32 @@ router.get('/attendee1DayNotice/:date', async (req, res) => {
   //
   return res.status(200).json({ date });
 });
+
+// http://127.0.0.1:5100/api/attendeeDayOfText/2024-04-12
+router.get('/attendeeDayOfText/:date', async (req, res) => {
+  const { date } = req.params;
+  const conn = await mysql.createConnection(mysqlServer);
+  try {
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND phone IS NOT NULL AND phone != "";`;
+    const results = await conn.query(sql, [date]);
+
+    const data = results[0];
+
+    for (const attendee of data) {
+      //await dayOfEventSms(attendee.uuid);
+      //debugger;
+    }
+  } catch (err) {
+    console.error(err);
+    return { error: err };
+  } finally {
+    conn.end();
+  }
+
+  //
+  return res.status(200).json({ date });
+});
+
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
       Email and SMS functions - End
