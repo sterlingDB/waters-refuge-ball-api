@@ -116,15 +116,15 @@ if (process.env.NODE_ENV === "production") {
 
   //*.refugeball.com cert
   const privateKey2 = fs.readFileSync(
-    "/etc/letsencrypt/live/refugeball.com-0002/privkey.pem",
+    "/etc/letsencrypt/live/www.refugeball.com/privkey.pem",
     "utf8"
   );
   const certificate2 = fs.readFileSync(
-    "/etc/letsencrypt/live/refugeball.com-0002/fullchain.pem",
+    "/etc/letsencrypt/live/www.refugeball.com/fullchain.pem",
     "utf8"
   );
   const ca2 = fs.readFileSync(
-    "/etc/letsencrypt/live/refugeball.com-0002/chain.pem",
+    "/etc/letsencrypt/live/www.refugeball.com/chain.pem",
     "utf8"
   );
 
