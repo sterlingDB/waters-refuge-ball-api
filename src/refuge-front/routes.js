@@ -22,8 +22,8 @@ BigInt.prototype.toJSON = function() {
   return this.toString();
 };
 
-const freeCode = "free2024";
-const cashCode = "cash2024";
+const freeCode = "free2025";
+const cashCode = "cash2025";
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
