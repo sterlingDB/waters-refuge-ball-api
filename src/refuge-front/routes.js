@@ -51,7 +51,7 @@ async function hostessConfirmationEmail(uuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
-      cc: "sarah@thewaterschurch.net",
+      cc: "refuge@thewaterschurch.net",
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball Confirmation",
       templateId: "d-0aeac20b7eae429ca69c3f2563828d90",
@@ -324,7 +324,7 @@ async function generalAttendeeConfirmationEmail(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee[0].email,
-      //cc: 'sarah@thewaterschurch.net',
+      //cc: 'refuge@thewaterschurch.net',
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball Registration!",
       templateId: "d-4af898133b5f4d9abf294a3b72e0fc88",
@@ -456,7 +456,7 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       //to: 'jmorris@sterling-databases.com',
-      //cc: 'sarah@thewaterschurch.net',
+      //cc: 'refuge@thewaterschurch.net',
       to: attendee[0].hostessEmail,
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball: Hostess Alert: Attendees assigned to your table",
@@ -529,7 +529,7 @@ async function reminderEmailGeneral(masterUuid) {
     const msg = {
       //to: 'jmorris@sterling-databases.com',
       to: attendee[0].email,
-      //cc: 'sarah@thewaterschurch.net',
+      //cc: 'refuge@thewaterschurch.net',
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball: Tomorrow Night!",
       templateId: "d-b3fdaf10714d49ed84415abe2ed5671b",
@@ -604,7 +604,7 @@ async function reminderEmaiHostess(uuid) {
     const msg = {
       to: attendee.email,
       //to: 'jmorris@sterling-databases.com',
-      cc: "sarah@thewaterschurch.net",
+      cc: "refuge@thewaterschurch.net",
       bcc: "jmorris@sterling-databases.com",
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball: In 2 days!",
