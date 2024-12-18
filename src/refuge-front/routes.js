@@ -1350,9 +1350,10 @@ router.post("/inviteAttendee", async (req, res) => {
       hostess.eventDate,
       hostess.tableNumber,
       newUuid,
+      newUuid,
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, wasInvited=1, created=NOW();`;
+      SET name=?, phone=?, email=?, eventDate=?, tableNumber=?, uuid=?, masterAttendeeUuid=?, wasInvited=1, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
     const attendeeId = results[0].insertId;
