@@ -22,8 +22,8 @@ BigInt.prototype.toJSON = function() {
   return this.toString();
 };
 
-const freeCode = "free2025";
-const cashCode = "cash2025";
+const freeCode = "free2026";
+const cashCode = "cash2026";
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -529,6 +529,7 @@ async function reminderEmailGeneral(masterUuid) {
     const msg = {
       //to: 'jmorris@sterling-databases.com',
       to: attendee[0].email,
+      bcc: "jmorris@sterling-databases.com",
       //cc: 'refuge@thewaterschurch.net',
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball: Tomorrow Night!",
@@ -603,7 +604,7 @@ async function reminderEmaiHostess(uuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
-      //to: 'jmorris@sterling-databases.com',
+      //to: "jmorris@sterling-databases.com",
       cc: "refuge@thewaterschurch.net",
       bcc: "jmorris@sterling-databases.com",
       from: "refuge@thewaterschurch.net",
@@ -663,7 +664,7 @@ Check your email for more info!
         body: body,
         from: "+13203453479",
         to: attendee.phone,
-        //to: '3202232089',
+        //to: "3202232089",
       })
       .then(async (message) => {
         console.log(`text sent: ${attendee.name}`);
@@ -751,7 +752,7 @@ router.get("/test/:uuid", async (req, res) => {
   return res.status(200).json({ uuid });
 });
 
-// http://127.0.0.1:5100/api/hostess2DayNotice/2024-04-12
+// http://127.0.0.1:5100/api/hostess2DayNotice/2025-03-21
 router.get("/hostess2DayNotice/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -776,7 +777,7 @@ router.get("/hostess2DayNotice/:date", async (req, res) => {
   return res.status(200).json({ date });
 });
 
-// http://127.0.0.1:5100/api/attendee1DayNotice/2024-04-12
+// http://127.0.0.1:5100/api/attendee1DayNotice/2025-03-21
 router.get("/attendee1DayNotice/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -801,7 +802,7 @@ router.get("/attendee1DayNotice/:date", async (req, res) => {
   return res.status(200).json({ date });
 });
 
-// http://127.0.0.1:5100/api/attendeeDayOfText/2024-04-12
+// http://127.0.0.1:5100/api/attendeeDayOfText/2025-03-21
 router.get("/attendeeDayOfText/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -1036,6 +1037,7 @@ router.post("/reserveHostess", async (req, res) => {
     const paidCash = args.specialCode === cashCode ? true : false;
     const isHostess = args.ticketOptions.includes("hostess") ? 1 : 0;
     const specialDinner = args.ticketOptions.includes("specialDinner") ? 1 : 0;
+    const specialDinnerType = args.dietaryPreference;
 
     const conn = await mysql.createConnection(mysqlServer);
 
@@ -1058,9 +1060,10 @@ router.post("/reserveHostess", async (req, res) => {
       uuid,
       isHostess,
       specialDinner,
+      specialDinnerType,
     ];
     const sql = `INSERT INTO eventAttendees 
-      SET name=?, phone=?, email=?, notes=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, created=NOW();`;
+      SET name=?, phone=?, email=?, notes=?, eventDate=?, specialCode=?, tableNumber=?, uuid=?, isHostess=?, specialDinner=?, specialDinnerType=?, created=NOW();`;
     const results = await conn.query(sql, updateArgs);
 
     const hostessId = results[0].insertId;
@@ -1203,6 +1206,7 @@ router.post("/reserveGeneral", async (req, res) => {
         args.eventDate,
         args.specialCode,
         x.options.includes("specialDinner") ? 1 : 0,
+        x.dietaryPreference,
         paidCash,
         isFree,
         paidCash || isFree,
@@ -1211,7 +1215,8 @@ router.post("/reserveGeneral", async (req, res) => {
       ];
 
       const sql = `UPDATE eventAttendees 
-          SET name=?, phone=?, email=?, eventDate=?, specialCode=?, specialDinner=?, 
+          SET name=?, phone=?, email=?, eventDate=?, specialCode=?, 
+          specialDinner=?, specialDinnerType=?, 
           paidCash=?, isFree=?, hasPaid=?, notes=?, modified=NOW()
         WHERE  uuid=?;`;
       const results = await conn.query(sql, updateArgs);
@@ -1254,6 +1259,7 @@ router.post("/reserveInvitee", async (req, res) => {
     const isFree = args.specialCode === freeCode ? true : false;
     const paidCash = args.specialCode === cashCode ? true : false;
     const specialDinner = args.ticketOptions.includes("specialDinner") ? 1 : 0;
+    const specialDinnerType = args.dietaryPreference;
 
     const conn = await mysql.createConnection(mysqlServer);
 
@@ -1263,13 +1269,14 @@ router.post("/reserveInvitee", async (req, res) => {
       args.attendee.email,
       args.specialCode,
       specialDinner,
+      specialDinnerType,
       paidCash,
       isFree,
       paidCash || isFree ? true : false,
       uuid,
     ];
     const sql = `UPDATE eventAttendees 
-      SET name=?, phone=?, email=?, specialCode=?, specialDinner=?, paidCash=?, isFree=?, hasPaid=?, modified=NOW()
+      SET name=?, phone=?, email=?, specialCode=?, specialDinner=?, specialDinnerType=?, paidCash=?, isFree=?, hasPaid=?, modified=NOW()
       WHERE  uuid=?;`;
     const results = await conn.query(sql, updateArgs);
 
