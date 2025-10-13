@@ -96,7 +96,7 @@ async function hostessConfirmationSms(uuid) {
     const attendee = await getAttendee(conn, uuid);
     const eventDateFormatted = format(attendee.eventDate, "eeee MMMM do");
 
-    const body = `Your a Refuge Ball 2024 table hostess!
+    const body = `Your a Refuge Ball ${process.env.REFUGE_BALL_YEAR} table hostess!
 We have your hostess spots reserved for ${eventDateFormatted}.
 More info will follow!
 
