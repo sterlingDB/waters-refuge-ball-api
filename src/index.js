@@ -58,10 +58,10 @@ app.use(bodyParser.json());
 // certbot use
 // in the terminal run: certbot certonly --manual -d refugeball.com
 app.use(
-  "/.well-known/acme-challenge/aDCfV4j4qMienuofytr-EeLLw1cKHdu7r-E4CbKyTec",
+  "/.well-known/acme-challenge/eDWSMWlnhEznX8MItTazoK7fD_Q6uAPEqlH-tDr_38E",
   (req, res) => {
     res.send(
-      "aDCfV4j4qMienuofytr-EeLLw1cKHdu7r-E4CbKyTec.jnueKkvexSOuTtRFitgKYrV5VV6YQfpJbnF07scx_ZI"
+      "eDWSMWlnhEznX8MItTazoK7fD_Q6uAPEqlH-tDr_38E.jnueKkvexSOuTtRFitgKYrV5VV6YQfpJbnF07scx_ZI"
     );
   }
 );
