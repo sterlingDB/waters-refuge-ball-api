@@ -467,7 +467,7 @@ async function generalAttendeeNotifyHostessEmail(masterUuid) {
       .send(msg)
       .then(async (foo) => {
         console.log(
-          "Email sent: Hostess Alert: Attendees assigned to your table"
+          "Email sent: Hostess Alert: Attendees assigned to your table",
         );
 
         // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
@@ -845,6 +845,15 @@ async function getCosts(dbConn) {
   const costs = results[0][0];
   return costs;
 }
+
+async function specialDinnerAvailable(dbConn) {
+  const sql = `SELECT allowSpecialDinner FROM waters_refuge_ball.system_status WHERE id=1;`;
+  const results = await dbConn.query(sql);
+
+  const costs = results[0][0];
+  return costs;
+}
+
 async function getAttendee(dbConn, uuid) {
   const sql = `SELECT eventAttendees.*, eventTables.nightOfTableNumber, hostessData.name AS hostessName, hostessData.email AS hostessEmail, eventPayments.cardBrand, eventPayments.last4, eventPayments.amount, eventPayments.receiptUrl
   FROM eventAttendees 
@@ -901,7 +910,7 @@ async function calculateTotalPrice(dbConn, uuid) {
   if (attendee?.masterAttendeeUuid) {
     allAttendees = await getAttendeesByMasterId(
       dbConn,
-      attendee.masterAttendeeUuid
+      attendee.masterAttendeeUuid,
     );
   }
 
@@ -1481,7 +1490,7 @@ router.post("/getAllAttendeeByMaster", async (req, res) => {
 
     let allAttendees = await getAttendeesByMasterId(
       conn,
-      args.masterAttendeeUuid
+      args.masterAttendeeUuid,
     );
     if (allAttendees.length === 0) {
       const singleAttendee = await getAttendee(conn, args.masterAttendeeUuid);
@@ -1756,7 +1765,7 @@ router.get("/status", async (req, res) => {
 
     const hostessOpenDateTime = new Date(results.hostessOpenDateTime);
     const hostessInviteCloseDateTime = new Date(
-      results.hostessInviteCloseDateTime
+      results.hostessInviteCloseDateTime,
     );
     const generalOpenDateTime = new Date(results.generalOpenDateTime);
     const generalCloseDateTime = new Date(results.generalCloseDateTime);
@@ -1795,6 +1804,19 @@ router.get("/getCosts", async (req, res) => {
     conn.end();
 
     return res.status(200).json(costs);
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json(err);
+  }
+});
+
+router.get("/specialDinnerAvailable", async (req, res) => {
+  try {
+    const conn = await mysql.createConnection(mysqlServer);
+    const results = await specialDinnerAvailable(conn);
+    conn.end();
+
+    return res.status(200).json(Boolean(results.allowSpecialDinner));
   } catch (err) {
     console.error(err);
     return res.status(400).json(err);
