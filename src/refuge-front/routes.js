@@ -539,7 +539,7 @@ async function reminderEmailGeneral(masterUuid) {
     await sgMail
       .send(msg)
       .then(async (foo) => {
-        console.log("Email sent");
+        console.log(`Email sent - ${attendee[0].email}`);
 
         // const sqlUpdate = `UPDATE eventAttendees SET confirmation_email_sent=1 WHERE uuid=?;`;
         // const [resultsUpdate] = await conn.query(sqlUpdate, [masterUuid]);
@@ -752,18 +752,22 @@ router.get("/test/:uuid", async (req, res) => {
   return res.status(200).json({ uuid });
 });
 
-// http://127.0.0.1:5100/api/hostess2DayNotice/2025-03-21
+// http://127.0.0.1/api/hostess2DayNotice/2026-02-13
 router.get("/hostess2DayNotice/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
   try {
-    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND isHostess=1;`;
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND isHostess=1 AND emailHostess2DaysOut=0;`;
     const results = await conn.query(sql, [date]);
 
     const data = results[0];
 
     for (const attendee of data) {
       //await reminderEmaiHostess(attendee.uuid);
+      // await conn.query(
+      //   `UPDATE waters_refuge_ball.eventAttendees SET emailHostess2DaysOut=1 WHERE uuid = ?`,
+      //   [attendee.uuid],
+      // );
       //debugger;
     }
   } catch (err) {
@@ -782,14 +786,17 @@ router.get("/attendee1DayNotice/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
   try {
-    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND email IS NOT NULL;`;
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND email IS NOT NULL AND emailAttendeeDayBefore=0;`;
     const results = await conn.query(sql, [date]);
 
     const data = results[0];
 
     for (const attendee of data) {
-      //await reminderEmailGeneral(attendee.uuid);
-      //debugger;
+      await reminderEmailGeneral(attendee.uuid);
+      await conn.query(
+        `UPDATE waters_refuge_ball.eventAttendees SET emailAttendeeDayBefore=1 WHERE uuid = ?`,
+        [attendee.uuid],
+      );
     }
   } catch (err) {
     console.error(err);
@@ -807,13 +814,17 @@ router.get("/attendeeDayOfText/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
   try {
-    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND phone IS NOT NULL AND phone != "";`;
+    const sql = `SELECT * FROM waters_refuge_ball.eventAttendees WHERE eventDate = ? AND hasPaid=1 AND phone IS NOT NULL AND phone != "" AND smsAttendeeDayOf=0;`;
     const results = await conn.query(sql, [date]);
 
     const data = results[0];
 
     for (const attendee of data) {
       //await dayOfEventSms(attendee.uuid);
+      // await conn.query(
+      //   `UPDATE waters_refuge_ball.eventAttendees SET smsAttendeeDayOf=1 WHERE uuid = ?`,
+      //   [attendee.uuid],
+      // );
       //debugger;
     }
   } catch (err) {
