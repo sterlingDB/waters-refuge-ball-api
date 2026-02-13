@@ -763,7 +763,7 @@ router.get("/hostess2DayNotice/:date", async (req, res) => {
     const data = results[0];
 
     for (const attendee of data) {
-      //await reminderEmaiHostess(attendee.uuid);
+      // await reminderEmaiHostess(attendee.uuid);
       // await conn.query(
       //   `UPDATE waters_refuge_ball.eventAttendees SET emailHostess2DaysOut=1 WHERE uuid = ?`,
       //   [attendee.uuid],
@@ -781,7 +781,7 @@ router.get("/hostess2DayNotice/:date", async (req, res) => {
   return res.status(200).json({ date });
 });
 
-// http://127.0.0.1:5100/api/attendee1DayNotice/2025-03-21
+// http://127.0.0.1:5100/api/attendee1DayNotice/2026-02-13
 router.get("/attendee1DayNotice/:date", async (req, res) => {
   const { date } = req.params;
   const conn = await mysql.createConnection(mysqlServer);
@@ -792,11 +792,11 @@ router.get("/attendee1DayNotice/:date", async (req, res) => {
     const data = results[0];
 
     for (const attendee of data) {
-      await reminderEmailGeneral(attendee.uuid);
-      await conn.query(
-        `UPDATE waters_refuge_ball.eventAttendees SET emailAttendeeDayBefore=1 WHERE uuid = ?`,
-        [attendee.uuid],
-      );
+      // await reminderEmailGeneral(attendee.uuid);
+      // await conn.query(
+      //   `UPDATE waters_refuge_ball.eventAttendees SET emailAttendeeDayBefore=1 WHERE uuid = ?`,
+      //   [attendee.uuid],
+      // );
     }
   } catch (err) {
     console.error(err);
@@ -820,7 +820,7 @@ router.get("/attendeeDayOfText/:date", async (req, res) => {
     const data = results[0];
 
     for (const attendee of data) {
-      //await dayOfEventSms(attendee.uuid);
+      // await dayOfEventSms(attendee.uuid);
       // await conn.query(
       //   `UPDATE waters_refuge_ball.eventAttendees SET smsAttendeeDayOf=1 WHERE uuid = ?`,
       //   [attendee.uuid],
