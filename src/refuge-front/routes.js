@@ -22,8 +22,8 @@ BigInt.prototype.toJSON = function() {
   return this.toString();
 };
 
-const freeCode = "free2026";
-const cashCode = "cash2026";
+const freeCode = "free2027";
+const cashCode = "cash2027";
 
 /*  
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
@@ -51,7 +51,7 @@ async function hostessConfirmationEmail(uuid) {
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: attendee.email,
-      cc: "refuge@thewaterschurch.net",
+      // cc: "refuge@thewaterschurch.net",
       from: "refuge@thewaterschurch.net",
       subject: "Refuge Ball Confirmation",
       templateId: "d-0aeac20b7eae429ca69c3f2563828d90",
@@ -245,7 +245,7 @@ async function inviteeConfirmationEmail(uuid) {
 
     let options = "";
     if (attendee.specialDinner) {
-      options += "Special Dinner: Vegan and Gluten Free";
+      options += "Special Dinner: Gluten/Dairy free";
     }
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
