@@ -59,3 +59,13 @@ On 2026-10-08, `node --check src/index.js` and `node --check src/refuge-front/ro
 - Preserve pricing units, group identity, reservation expiry, and payment status semantics unless the task explicitly changes them.
 - Add meaningful isolated coverage when changing registration/payment logic; do not use live registrations or real recipients as fixtures.
 - Do not run `update.sh`, messaging scripts, or production mutations as routine validation. Keep generated bundles out of unrelated source edits.
+
+## Hostess table payments
+
+- `src/refuge-front/table-payments.js` owns quote, pending-status, and payment endpoints; `table-payment-rules.js` validates selections and prices. Only unpaid invited guests at the identified hostess's date/table are eligible.
+- Apply the additive `migrations/001_table_payments.sql` via `npm run migrate:table-payments` to the intended database before using checkout. Migration is explicit, not run at startup. Confirm the target environment before applying it.
+- `paymentCheckouts` persists the exact Square request/idempotency key before charging; `paymentClaims` prevents overlapping payment and attendee edits. Pending requests contain a tokenized payment source (never raw card details) and must not be logged/exposed. Request data is cleared on completion/definitive decline.
+- Ambiguous failures retain claims. Resume from the hostess dashboard to reconcile the same request; do not manually delete pending claims without verifying Square status. Completed checkouts allocate one `eventPayments` row per guest with their share of the single charge.
+- `payment-guards.js` coordinates existing payment/attendee mutation routes with table checkout using MySQL advisory locks. MySQL/MariaDB must support multiple named locks per connection.
+- `/squareConfig` supplies public SDK configuration to both payment screens. Set `SQUARE_APPLICATION_ID` and `SQUARE_LOCATION_ID` to match `SQUARE_ACCESS_TOKEN` and `NODE_ENV`; existing application IDs are defaults. General/add-on prices come from `eventCosts` (the intended add-on is $5).
+- `npm test` runs isolated rule and checkout recovery tests with fake database/Square implementations. Run sandbox integration checks against a migrated development database before deployment; no automated test charges real cards or sends notifications.

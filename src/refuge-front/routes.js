@@ -18,6 +18,29 @@ const client = new Client({
   accessToken: process.env.SQUARE_ACCESS_TOKEN,
 });
 
+const connect = () => mysql.createConnection(mysqlServer);
+const { paymentGuard } = require("./payment-guards");
+router.use(
+  ["/payment", "/reserveInvitee", "/reserveGeneral", "/removeAttendee", "/transferAttendee", "/cancel", "/updateGroupReservation"],
+  // Express trims mount paths in middleware; retain the original route for guard decisions.
+  (req, res, next) => {
+    req.paymentRoute = req.baseUrl.split("/").pop();
+    return paymentGuard(connect)(req, res, next);
+  }
+);
+router.get("/squareConfig", (req, res) => res.json({
+  applicationId: process.env.SQUARE_APPLICATION_ID || (isProduction
+    ? "sq0idp-Wd7DIerAf5dFftVd7bvhQg" : "sandbox-sq0idb-fAhB2ORC2gGsIEshJ_8d0w"),
+  locationId: process.env.SQUARE_LOCATION_ID, production: isProduction,
+}));
+require("./table-payments")(router, {
+  connect, client,
+  locationId: process.env.SQUARE_LOCATION_ID,
+  applicationId: process.env.SQUARE_APPLICATION_ID || (isProduction
+    ? "sq0idp-Wd7DIerAf5dFftVd7bvhQg" : "sandbox-sq0idb-fAhB2ORC2gGsIEshJ_8d0w"),
+  production: isProduction,
+});
+
 BigInt.prototype.toJSON = function() {
   return this.toString();
 };

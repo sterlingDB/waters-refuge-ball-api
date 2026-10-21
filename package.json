@@ -4,6 +4,8 @@
   "description": "Refuge Ball API",
   "main": "index.js",
   "scripts": {
+    "test": "node --test test/*.test.js",
+    "migrate:table-payments": "node scripts/migrate-table-payments.js",
     "start": "NODE_ENV=production node src/index.js",
     "dev": "NODE_ENV=development nodemon --inspect=127.0.0.1:9230 src/index.js"
   },
